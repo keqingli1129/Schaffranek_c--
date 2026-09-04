@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/home/keqingli1129/Schaffranek_c++/build",
+  "command": "/usr/bin/g++   -g -o CMakeFiles/Schaffranek_c++.dir/main.cpp.o -c /home/keqingli1129/Schaffranek_c++/main.cpp",
+  "file": "/home/keqingli1129/Schaffranek_c++/main.cpp",
+  "output": "CMakeFiles/Schaffranek_c++.dir/main.cpp.o"
+}
+]
