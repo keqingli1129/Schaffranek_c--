@@ -1,1 +1,0 @@
-/usr/bin/g++ -g CMakeFiles/Schaffranek_c++.dir/main.cpp.o -o Schaffranek_c++ 
