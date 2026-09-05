@@ -4,6 +4,7 @@
 
 #include "mathutils.h"
 #include "stringutils.h"
+#include "imageutils.h"
 
 int main() {
     std::string name;
@@ -36,6 +37,30 @@ int main() {
 
     const std::vector<std::string> words = stringutils::split("alpha,beta,gamma", ',');
     std::cout << "joined     = " << stringutils::join(words, " | ") << std::endl;
+
+    std::cout << "opencv     = " << imageutils::openCvVersion() << '\n';
+
+    const imageutils::Image pattern = imageutils::makeTestPattern(256, 128);
+    std::cout << "pattern    = " << pattern.width() << 'x' << pattern.height()
+              << ", " << pattern.channels() << " channels\n";
+
+    // Chained in memory -- no disk round trip between steps.
+    const imageutils::Image gray = imageutils::toGrayscale(pattern);
+    std::cout << "grayscale  = " << gray.width() << 'x' << gray.height()
+              << ", " << gray.channels() << " channels\n";
+
+    const imageutils::Image resized = imageutils::resize(gray, 64, 32);
+    std::cout << "resized    = " << resized.width() << 'x' << resized.height()
+              << ", " << resized.channels() << " channels\n";
+
+    const imageutils::Image blurred = imageutils::blur(resized, 5);
+    std::cout << "blurred    = " << blurred.width() << 'x' << blurred.height()
+              << ", " << blurred.channels() << " channels\n";
+
+    const std::string outputPath = "imageutils_demo.png";
+    const bool saved = blurred.save(outputPath);
+    std::cout << "saved      = " << outputPath << " (" << (saved ? "yes" : "no") << ")"
+              << std::endl;
 
     return 0;
 }
