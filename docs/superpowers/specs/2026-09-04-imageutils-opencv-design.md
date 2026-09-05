@@ -111,8 +111,9 @@ private:
     friend struct detail::Access;
 };
 
-// Synthesized 3-channel gradient/checker pattern. Exists so the demo and the tests
-// need no image files on disk. Returns an empty Image if width or height <= 0.
+// Synthesized 3-channel BGR pattern: blue ramps with x, green ramps with y, red is a
+// fixed-size checkerboard. Deterministic, so tests can assert on it. Exists so the demo
+// and the tests need no image files on disk. Empty Image if width or height <= 0.
 IMAGEUTILS_API Image makeTestPattern(int width, int height);
 
 // Single-channel copy of src. Already-grayscale input is passed through.
