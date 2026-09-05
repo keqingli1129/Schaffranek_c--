@@ -238,7 +238,8 @@ directory as proof that `imgcodecs` is wired up.
 
 - `cmake --build` succeeds from a clean build directory with no warnings introduced.
 - `ctest` runs `imageutils_test` and it passes.
-- `grep -r "opencv\|cv::" dynamiclib/imageutils.h test/ main.cpp` returns nothing.
+- `grep -r "cv::\|#include.*opencv" dynamiclib/imageutils.h test/ main.cpp` returns nothing.
+  (Not a bare `opencv` search — `main.cpp` prints an output label spelled `"opencv     = "`.)
 - The demo section of `main.cpp` prints the values above and produces a valid PNG.
 - `stringutils.h`, `stringutils.cpp`, `mathutils.*` are byte-identical to their state
   before this work.

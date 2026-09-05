@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - `stringutils.h`, `stringutils.cpp`, `stringutils_export.h`, `mathutils.h`, `mathutils.cpp` must end byte-identical to their state before this work. Do not touch them.
-- OpenCV must not appear in `dynamiclib/imageutils.h`, `test/`, or `main.cpp`. Verification: `grep -rn "opencv\|cv::" dynamiclib/imageutils.h test/ main.cpp` returns nothing.
+- OpenCV must not appear in `dynamiclib/imageutils.h`, `test/`, or `main.cpp`. Verification: `grep -rn "cv::\|#include.*opencv" dynamiclib/imageutils.h test/ main.cpp` returns nothing.
 - OpenCV links `PRIVATE` to `imageutils`. Never `PUBLIC`, never `INTERFACE`.
 - Link the named component targets `opencv_core opencv_imgproc opencv_imgcodecs`. Do not use `${OpenCV_LIBS}`.
 - Only `core`, `imgproc`, `imgcodecs` may be used. No `highgui`, no `cv::imshow`, no video, no DNN.
@@ -384,8 +384,9 @@ Expected: PASS. `imageutils_test` prints `imageutils_test: all checks passed`; c
 
 - [ ] **Step 8: Verify OpenCV did not leak**
 
-Run: `grep -rn "opencv\|cv::" dynamiclib/imageutils.h test/ main.cpp; echo "exit=$?"`
-Expected: no matching lines, `exit=1`.
+Run: `grep -rn "cv::\|#include.*opencv" dynamiclib/imageutils.h test/ main.cpp; echo "exit=$?"`
+Expected: no matching lines, `exit=1`. Do not grep for the bare word `opencv`: `main.cpp`
+legitimately prints an output label spelled `"opencv     = "`, which is a false positive.
 
 Run: `readelf -d build/test/imageutils_test | grep NEEDED`
 Expected: `libimageutils.so.0`, `libstdc++`, `libgcc_s`, `libc` — and no OpenCV entry. The
@@ -696,7 +697,7 @@ Expected: `PNG image data, 64 x 32, 8-bit grayscale, non-interlaced`.
 
 ```bash
 ctest --test-dir build --output-on-failure
-grep -rn "opencv\|cv::" dynamiclib/imageutils.h test/ main.cpp
+grep -rn "cv::\|#include.*opencv" dynamiclib/imageutils.h test/ main.cpp
 git diff --stat main -- dynamiclib/stringutils.h dynamiclib/stringutils.cpp \
     dynamiclib/stringutils_export.h staticlab/mathutils.h staticlab/mathutils.cpp
 ```
