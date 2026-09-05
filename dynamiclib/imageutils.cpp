@@ -1,5 +1,7 @@
 #include "imageutils.h"
 
+#include <filesystem>
+
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 
@@ -39,6 +41,20 @@ Image& Image::operator=(Image&&) noexcept = default;
 bool Image::load(const std::string& path) {
     if (!impl_) {
         impl_ = std::make_unique<Impl>();
+    }
+    // Reject anything that isn't an existing regular file before calling into
+    // OpenCV. This keeps imgcodecs' own findDecoder warnings off the
+    // consumer's stderr for the common bad-path case (missing file, a
+    // directory, ...). A file that exists but is corrupt still reaches
+    // cv::imread below and OpenCV may still log for that; that's accepted.
+    try {
+        if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path)) {
+            impl_->mat.release();
+            return false;
+        }
+    } catch (const std::filesystem::filesystem_error&) {
+        impl_->mat.release();
+        return false;
     }
     try {
         cv::Mat loaded = cv::imread(path, cv::IMREAD_COLOR);
@@ -82,7 +98,11 @@ int Image::channels() const {
 }
 
 std::string openCvVersion() {
-    return cv::getVersionString();
+    try {
+        return cv::getVersionString();
+    } catch (const cv::Exception&) {
+        return "";
+    }
 }
 
 }  // namespace imageutils

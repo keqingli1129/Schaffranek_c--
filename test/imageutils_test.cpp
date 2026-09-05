@@ -36,6 +36,12 @@ int main() {
     CHECK(!missing.load("this_file_does_not_exist_12345.png"));
     CHECK(missing.empty());
 
+    // Case 10b: loading a path that exists but is a directory fails and leaves
+    // the image empty. "." always exists and is never a regular file.
+    imageutils::Image directory;
+    CHECK(!directory.load("."));
+    CHECK(directory.empty());
+
     // Saving an empty image fails rather than writing a file.
     CHECK(!blank.save("should_not_be_created.png"));
 
