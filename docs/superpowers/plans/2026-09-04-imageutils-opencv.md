@@ -78,6 +78,7 @@ Create `test/imageutils_test.cpp`:
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <utility>
 
 #include "imageutils.h"
 
@@ -434,7 +435,7 @@ Add `#include <cstdio>` to the includes at the top of the file for `std::remove`
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `cmake --build build -j`
-Expected: FAIL with `error: 'makeTestPattern' is not a member of 'imageutils'` — the header declares it (Task 1 wrote the full header) but nothing defines it, so the link step fails with `undefined reference to imageutils::makeTestPattern(int, int)`.
+Expected: FAIL at link. Task 1 already declared `makeTestPattern` in the header, so compilation succeeds and the linker reports `undefined reference to imageutils::makeTestPattern(int, int)`.
 
 - [ ] **Step 3: Write the implementation**
 
