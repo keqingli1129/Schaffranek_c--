@@ -2,7 +2,7 @@ add_library(stringutils SHARED stringutils.cpp)
 
 target_include_directories(stringutils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_compile_features(stringutils PUBLIC cxx_std_17)
+target_compile_features(stringutils PUBLIC cxx_std_23)
 
 # Export only what is marked STRINGUTILS_API.
 set_target_properties(stringutils PROPERTIES
