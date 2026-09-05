@@ -1,5 +1,6 @@
 #include "imageutils.h"
 
+#include <algorithm>
 #include <filesystem>
 
 #include <opencv2/core.hpp>
@@ -95,6 +96,30 @@ int Image::height() const {
 
 int Image::channels() const {
     return empty() ? 0 : impl_->mat.channels();
+}
+
+Image makeTestPattern(int width, int height) {
+    if (width <= 0 || height <= 0) {
+        return Image{};
+    }
+    try {
+        cv::Mat mat(height, width, CV_8UC3);
+        const int lastX = std::max(width - 1, 1);
+        const int lastY = std::max(height - 1, 1);
+        for (int y = 0; y < height; ++y) {
+            auto* row = mat.ptr<cv::Vec3b>(y);
+            for (int x = 0; x < width; ++x) {
+                const auto blue = static_cast<unsigned char>((x * 255) / lastX);
+                const auto green = static_cast<unsigned char>((y * 255) / lastY);
+                const bool lightSquare = (((x / 16) + (y / 16)) % 2) == 0;
+                // cv::Vec3b is ordered B, G, R.
+                row[x] = cv::Vec3b(blue, green, lightSquare ? 255 : 0);
+            }
+        }
+        return detail::Access::wrap(std::move(mat));
+    } catch (const cv::Exception&) {
+        return Image{};
+    }
 }
 
 std::string openCvVersion() {

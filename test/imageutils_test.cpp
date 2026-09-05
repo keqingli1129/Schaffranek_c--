@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -48,6 +49,27 @@ int main() {
     // The handle is move-only and moves cleanly.
     imageutils::Image moved = std::move(missing);
     CHECK(moved.empty());
+
+    // Case 1: the pattern has the requested geometry.
+    const imageutils::Image pattern = imageutils::makeTestPattern(64, 48);
+    CHECK(!pattern.empty());
+    CHECK(pattern.width() == 64);
+    CHECK(pattern.height() == 48);
+    CHECK(pattern.channels() == 3);
+
+    // Case 2: non-positive dimensions yield an empty image, not a crash.
+    CHECK(imageutils::makeTestPattern(0, 10).empty());
+    CHECK(imageutils::makeTestPattern(10, -1).empty());
+
+    // Case 9: save/load round trip preserves geometry.
+    const std::string roundTripPath = "imageutils_test_roundtrip.png";
+    CHECK(pattern.save(roundTripPath));
+    imageutils::Image reloaded;
+    CHECK(reloaded.load(roundTripPath));
+    CHECK(reloaded.width() == pattern.width());
+    CHECK(reloaded.height() == pattern.height());
+    CHECK(reloaded.channels() == 3);
+    std::remove(roundTripPath.c_str());
 
     if (g_failures == 0) {
         std::cout << "imageutils_test: all checks passed\n";
