@@ -71,6 +71,45 @@ int main() {
     CHECK(reloaded.channels() == 3);
     std::remove(roundTripPath.c_str());
 
+    // Case 3: grayscale collapses to one channel, geometry unchanged.
+    const imageutils::Image gray = imageutils::toGrayscale(pattern);
+    CHECK(!gray.empty());
+    CHECK(gray.channels() == 1);
+    CHECK(gray.width() == pattern.width());
+    CHECK(gray.height() == pattern.height());
+
+    // Case 4: grayscaling an already-grayscale image is a no-op, not an error.
+    const imageutils::Image grayTwice = imageutils::toGrayscale(gray);
+    CHECK(!grayTwice.empty());
+    CHECK(grayTwice.channels() == 1);
+    CHECK(grayTwice.width() == gray.width());
+
+    // Case 5: resize hits the requested size exactly.
+    const imageutils::Image small = imageutils::resize(gray, 32, 16);
+    CHECK(small.width() == 32);
+    CHECK(small.height() == 16);
+    CHECK(small.channels() == 1);
+
+    // Case 6: non-positive targets yield an empty image.
+    CHECK(imageutils::resize(pattern, 0, 16).empty());
+    CHECK(imageutils::resize(pattern, 32, -5).empty());
+
+    // Case 7: blur preserves geometry and channel count.
+    const imageutils::Image blurred = imageutils::blur(small, 5);
+    CHECK(blurred.width() == small.width());
+    CHECK(blurred.height() == small.height());
+    CHECK(blurred.channels() == small.channels());
+
+    // Case 8: an even kernel is accepted and rounded up to odd.
+    CHECK(!imageutils::blur(small, 4).empty());
+    CHECK(!imageutils::blur(small, 0).empty());
+
+    // Case 11: every transform tolerates an empty input.
+    const imageutils::Image none;
+    CHECK(imageutils::toGrayscale(none).empty());
+    CHECK(imageutils::resize(none, 8, 8).empty());
+    CHECK(imageutils::blur(none, 3).empty());
+
     if (g_failures == 0) {
         std::cout << "imageutils_test: all checks passed\n";
     }

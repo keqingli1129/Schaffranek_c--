@@ -5,6 +5,7 @@
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 namespace imageutils {
 
@@ -117,6 +118,55 @@ Image makeTestPattern(int width, int height) {
             }
         }
         return detail::Access::wrap(std::move(mat));
+    } catch (const cv::Exception&) {
+        return Image{};
+    }
+}
+
+Image toGrayscale(const Image& src) {
+    if (src.empty()) {
+        return Image{};
+    }
+    try {
+        const cv::Mat& input = detail::Access::mat(src);
+        if (input.channels() == 1) {
+            return detail::Access::wrap(input.clone());
+        }
+        cv::Mat output;
+        cv::cvtColor(input, output, cv::COLOR_BGR2GRAY);
+        return detail::Access::wrap(std::move(output));
+    } catch (const cv::Exception&) {
+        return Image{};
+    }
+}
+
+Image resize(const Image& src, int width, int height) {
+    if (src.empty() || width <= 0 || height <= 0) {
+        return Image{};
+    }
+    try {
+        cv::Mat output;
+        cv::resize(detail::Access::mat(src), output, cv::Size(width, height), 0, 0,
+                   cv::INTER_AREA);
+        return detail::Access::wrap(std::move(output));
+    } catch (const cv::Exception&) {
+        return Image{};
+    }
+}
+
+Image blur(const Image& src, int kernelSize) {
+    if (src.empty()) {
+        return Image{};
+    }
+    // GaussianBlur requires a positive odd kernel.
+    int kernel = kernelSize < 1 ? 1 : kernelSize;
+    if (kernel % 2 == 0) {
+        ++kernel;
+    }
+    try {
+        cv::Mat output;
+        cv::GaussianBlur(detail::Access::mat(src), output, cv::Size(kernel, kernel), 0);
+        return detail::Access::wrap(std::move(output));
     } catch (const cv::Exception&) {
         return Image{};
     }
