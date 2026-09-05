@@ -139,11 +139,18 @@ target_link_libraries(imageutils_test PRIVATE imageutils)
 add_test(NAME imageutils_test COMMAND imageutils_test)
 ```
 
-Append to the root `CMakeLists.txt`, immediately after the existing `add_subdirectory(dynamiclib)` line:
+In the root `CMakeLists.txt`, add `add_subdirectory(test)` **after** the existing
+`include(CTest)` / `enable_testing()` pair, not next to the other `add_subdirectory` calls:
 
 ```cmake
+include(CTest)
+enable_testing()
+
 add_subdirectory(test)
 ```
+
+Order matters. `enable_testing()` must run before a subdirectory's `add_test()` calls, or
+`ctest` reports "No tests were found" while the build still succeeds — a silent pass.
 
 - [ ] **Step 2: Run the build to verify it fails**
 
@@ -380,8 +387,10 @@ Expected: PASS. `imageutils_test` prints `imageutils_test: all checks passed`; c
 Run: `grep -rn "opencv\|cv::" dynamiclib/imageutils.h test/ main.cpp; echo "exit=$?"`
 Expected: no matching lines, `exit=1`.
 
-Run: `ldd build/test/imageutils_test | grep -c opencv`
-Expected: `0` — the test binary has no direct OpenCV dependency of its own.
+Run: `readelf -d build/test/imageutils_test | grep NEEDED`
+Expected: `libimageutils.so.0`, `libstdc++`, `libgcc_s`, `libc` — and no OpenCV entry. The
+test binary has no direct OpenCV dependency of its own. Do not use `ldd` here: it walks the
+transitive closure and will list OpenCV because `libimageutils.so` legitimately needs it.
 
 - [ ] **Step 9: Commit**
 
