@@ -49,6 +49,12 @@ int main() {
     // The handle is move-only and moves cleanly.
     imageutils::Image moved = std::move(missing);
     CHECK(moved.empty());
+    // The moved-from source has a null impl_; every accessor must tolerate that.
+    CHECK(missing.empty());
+    CHECK(missing.width() == 0);
+    CHECK(missing.height() == 0);
+    CHECK(missing.channels() == 0);
+    CHECK(!missing.save("should_not_be_created.png"));
 
     // Case 1: the pattern has the requested geometry.
     const imageutils::Image pattern = imageutils::makeTestPattern(64, 48);
@@ -56,6 +62,10 @@ int main() {
     CHECK(pattern.width() == 64);
     CHECK(pattern.height() == 48);
     CHECK(pattern.channels() == 3);
+
+    // An unknown extension makes OpenCV's writer throw; the library must
+    // convert that into an in-band false, not let it escape.
+    CHECK(!pattern.save("imageutils_test_unwritable.zzz"));
 
     // Case 2: non-positive dimensions yield an empty image, not a crash.
     CHECK(imageutils::makeTestPattern(0, 10).empty());

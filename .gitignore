@@ -67,3 +67,5 @@ vcpkg_installed/
 Testing/
 .cache/
 build/
+imageutils_demo.png
+imageutils_test_roundtrip.png

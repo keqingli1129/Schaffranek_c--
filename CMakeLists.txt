@@ -7,10 +7,11 @@ add_subdirectory(dynamiclib)
 add_executable(Schaffranek_c++ main.cpp)
 target_link_libraries(Schaffranek_c++ PRIVATE mathutils stringutils imageutils)
 
-include(CTest)
-enable_testing()
+include(CTest)          # defines BUILD_TESTING and calls enable_testing() when ON
 
-add_subdirectory(test)
+if(BUILD_TESTING)
+    add_subdirectory(test)
+endif()
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

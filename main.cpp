@@ -40,27 +40,31 @@ int main() {
 
     std::cout << "opencv     = " << imageutils::openCvVersion() << '\n';
 
+    // Failures in imageutils are in-band: a transform returns an empty Image
+    // rather than throwing. Consumers check, they don't catch.
+    const auto report = [](const char* label, const imageutils::Image& image) {
+        std::cout << label << " = " << image.width() << 'x' << image.height()
+                  << ", " << image.channels() << " channels\n";
+        return !image.empty();
+    };
+
     const imageutils::Image pattern = imageutils::makeTestPattern(256, 128);
-    std::cout << "pattern    = " << pattern.width() << 'x' << pattern.height()
-              << ", " << pattern.channels() << " channels\n";
+    if (!report("pattern   ", pattern)) { return 1; }
 
     // Chained in memory -- no disk round trip between steps.
     const imageutils::Image gray = imageutils::toGrayscale(pattern);
-    std::cout << "grayscale  = " << gray.width() << 'x' << gray.height()
-              << ", " << gray.channels() << " channels\n";
+    if (!report("grayscale ", gray)) { return 1; }
 
     const imageutils::Image resized = imageutils::resize(gray, 64, 32);
-    std::cout << "resized    = " << resized.width() << 'x' << resized.height()
-              << ", " << resized.channels() << " channels\n";
+    if (!report("resized   ", resized)) { return 1; }
 
     const imageutils::Image blurred = imageutils::blur(resized, 5);
-    std::cout << "blurred    = " << blurred.width() << 'x' << blurred.height()
-              << ", " << blurred.channels() << " channels\n";
+    if (!report("blurred   ", blurred)) { return 1; }
 
     const std::string outputPath = "imageutils_demo.png";
     const bool saved = blurred.save(outputPath);
     std::cout << "saved      = " << outputPath << " (" << (saved ? "yes" : "no") << ")"
               << std::endl;
 
-    return 0;
+    return saved ? 0 : 1;
 }
