@@ -3,6 +3,7 @@ project(Schaffranek_c++ VERSION 0.1.0 LANGUAGES C CXX)
 
 add_subdirectory(staticlab)
 add_subdirectory(dynamiclib)
+add_subdirectory(test)
 
 add_executable(Schaffranek_c++ main.cpp)
 target_link_libraries(Schaffranek_c++ PRIVATE mathutils stringutils)
