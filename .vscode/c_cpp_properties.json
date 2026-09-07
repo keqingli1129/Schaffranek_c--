@@ -5,6 +5,14 @@
       "includePath": [
         "${workspaceFolder}/**"
       ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}/dynamiclib",
+          "${workspaceFolder}/staticlib",
+          "${workspaceFolder}/test"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      },
       "compilerPath": "/usr/bin/gcc",
       "compileCommands": "${workspaceFolder}/build/compile_commands.json",
       "cStandard": "c11",
