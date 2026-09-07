@@ -26,6 +26,16 @@ int main() {
     }
     std::cout << std::endl;
 
+    // 2x + y = 5, x - 3y = -8  ->  x = 1, y = 3. Eigen does the work inside
+    // mathutils; nothing about it reaches this translation unit.
+    const std::vector<double> solution =
+        mathutils::solveLinearSystem({{2.0, 1.0}, {1.0, -3.0}}, {5.0, -8.0});
+    std::cout << "solved  =";
+    for (double value : solution) {
+        std::cout << ' ' << value;
+    }
+    std::cout << (solution.empty() ? " <no solution>" : "") << std::endl;
+
     const std::string phrase = "  A man, a plan, a canal: Panama  ";
     const std::string trimmed = stringutils::trim(phrase);
 
