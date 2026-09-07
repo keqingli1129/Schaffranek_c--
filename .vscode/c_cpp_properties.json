@@ -6,12 +6,11 @@
         "${workspaceFolder}/**"
       ],
       "compilerPath": "/usr/bin/gcc",
+      "compileCommands": "${workspaceFolder}/build/compile_commands.json",
       "cStandard": "c11",
       "cppStandard": "c++20",
       "intelliSenseMode": "linux-gcc-x64",
-      "compilerArgs": [
-        ""
-      ]
+      "compilerArgs": []
     }
   ],
   "version": 4
