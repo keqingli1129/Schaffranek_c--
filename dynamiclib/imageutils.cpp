@@ -5,8 +5,10 @@
 #include <utility>
 
 #include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/videoio.hpp>
 
 namespace imageutils {
 
@@ -80,6 +82,57 @@ bool Image::save(const std::string& path) const {
     try {
         return cv::imwrite(path, impl_->mat);
     } catch (const cv::Exception&) {
+        return false;
+    }
+}
+
+bool Image::showCameraPreview(int cameraIndex, const std::string& windowTitle) const {
+    // cv::waitKey returns the raw key code; 27 is Esc.
+    constexpr int kEscape = 27;
+    // Long enough to pump the GUI event loop, short enough not to cap the
+    // frame rate: the camera's own read() is what paces this loop.
+    constexpr int kPollMs = 1;
+
+    try {
+        cv::VideoCapture capture(cameraIndex);
+        if (!capture.isOpened()) {
+            return false;
+        }
+
+        cv::namedWindow(windowTitle, cv::WINDOW_AUTOSIZE);
+
+        cv::Mat frame;
+        while (true) {
+            capture >> frame;
+            // An empty frame means the stream ended -- device unplugged, or a
+            // file-backed capture ran out. Not a failure, just the end.
+            if (frame.empty()) {
+                break;
+            }
+
+            cv::imshow(windowTitle, frame);
+
+            if (cv::waitKey(kPollMs) == kEscape) {
+                break;
+            }
+
+            // The window's own close button has to end the loop too; otherwise
+            // the next imshow would silently recreate the window and the
+            // preview would be unclosable except by Esc.
+            if (cv::getWindowProperty(windowTitle, cv::WND_PROP_VISIBLE) < 1) {
+                break;
+            }
+        }
+
+        cv::destroyWindow(windowTitle);
+        return true;
+    } catch (const cv::Exception&) {
+        // Includes the headless case: a build without GUI support throws from
+        // namedWindow/imshow rather than returning an error.
+        try {
+            cv::destroyWindow(windowTitle);
+        } catch (const cv::Exception&) {
+        }
         return false;
     }
 }

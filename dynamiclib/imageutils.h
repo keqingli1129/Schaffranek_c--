@@ -33,6 +33,21 @@ public:
     // on failure, including when the image is empty.
     bool save(const std::string& path) const;
 
+    // Opens a camera and shows its frames in a window, one after another, until
+    // Esc is pressed or the window is closed. Blocks for as long as the preview
+    // runs, so this is a foreground call, not a background stream.
+    //
+    // Displays only: this Image is neither read nor written, hence const. It
+    // captures nothing, because the frame on screen when the window closes is
+    // whichever one happened to be there, not one anybody chose.
+    //
+    // Returns false when the camera cannot be opened -- no device, in use by
+    // something else, or no display to draw into. That is an ordinary outcome
+    // here, reported in-band like every other failure in this header, so
+    // callers check the bool rather than catching.
+    bool showCameraPreview(int cameraIndex = 0,
+                           const std::string& windowTitle = "Original") const;
+
     bool empty() const;
     int width() const;     // 0 when empty
     int height() const;    // 0 when empty

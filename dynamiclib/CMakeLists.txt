@@ -15,7 +15,8 @@ set_target_properties(stringutils PROPERTIES
 # Selects dllexport over dllimport while building the library itself.
 target_compile_definitions(stringutils PRIVATE STRINGUTILS_BUILDING)
 
-find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs)
+# videoio/highgui back showCameraPreview; they stay PRIVATE like the rest.
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs videoio highgui)
 
 add_library(imageutils SHARED imageutils.cpp)
 
@@ -28,6 +29,8 @@ target_link_libraries(imageutils PRIVATE
     opencv_core
     opencv_imgproc
     opencv_imgcodecs
+    opencv_videoio
+    opencv_highgui
 )
 
 # Export only what is marked IMAGEUTILS_API.

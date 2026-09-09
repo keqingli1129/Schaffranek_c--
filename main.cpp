@@ -1,12 +1,13 @@
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "mathutils.h"
 #include "stringutils.h"
 #include "imageutils.h"
 
-int main() {
+int main(int argc, char** argv) {
     std::string name;
     std::cout << "Enter your name: ";
     std::getline(std::cin, name);
@@ -75,6 +76,26 @@ int main() {
     const bool saved = blurred.save(outputPath);
     std::cout << "saved      = " << outputPath << " (" << (saved ? "yes" : "no") << ")"
               << std::endl;
+
+    // Opt-in: the preview blocks until Esc and needs both a camera and a
+    // display, so it must never run in a headless build or a test harness.
+    const bool wantCamera = [&] {
+        for (int i = 1; i < argc; ++i) {
+            if (std::string_view(argv[i]) == "--camera") { return true; }
+        }
+        return false;
+    }();
+
+    if (wantCamera) {
+        std::cout << "camera     = opening (Esc to close)" << std::endl;
+        // The preview displays only, so any Image will do as the receiver.
+        const imageutils::Image live;
+        if (!live.showCameraPreview(0, "Original")) {
+            std::cout << "camera     = unavailable\n";
+            return 1;
+        }
+        std::cout << "camera     = closed\n";
+    }
 
     return saved ? 0 : 1;
 }
