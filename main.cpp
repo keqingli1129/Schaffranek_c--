@@ -28,46 +28,46 @@ std::filesystem::path projectDir() {
 }  // namespace
 
 int main(int argc, char** argv) {
-    std::string name;
-    std::cout << "Enter your name: ";
-    std::getline(std::cin, name);
-    std::cout << mathutils::greet(name) << std::endl;
+    // std::string name;
+    // std::cout << "Enter your name: ";
+    // std::getline(std::cin, name);
+    // std::cout << mathutils::greet(name) << std::endl;
 
-    const std::vector<int> values{3, 7, 11, 12, 42};
+    // const std::vector<int> values{3, 7, 11, 12, 42};
 
-    std::cout << "sum     = " << mathutils::sum(values) << '\n';
-    std::cout << "average = " << mathutils::average(values) << '\n';
-    std::cout << "5!      = " << mathutils::factorial(5) << '\n';
+    // std::cout << "sum     = " << mathutils::sum(values) << '\n';
+    // std::cout << "average = " << mathutils::average(values) << '\n';
+    // std::cout << "5!      = " << mathutils::factorial(5) << '\n';
 
-    std::cout << "primes  =";
-    for (int value : values) {
-        if (mathutils::isPrime(value)) {
-            std::cout << ' ' << value;
-        }
-    }
-    std::cout << std::endl;
+    // std::cout << "primes  =";
+    // for (int value : values) {
+    //     if (mathutils::isPrime(value)) {
+    //         std::cout << ' ' << value;
+    //     }
+    // }
+    // std::cout << std::endl;
 
-    // 2x + y = 5, x - 3y = -8  ->  x = 1, y = 3. Eigen does the work inside
-    // mathutils; nothing about it reaches this translation unit.
-    const std::vector<double> solution =
-        mathutils::solveLinearSystem({{2.0, 1.0}, {1.0, -3.0}}, {5.0, -8.0});
-    std::cout << "solved  =";
-    for (double value : solution) {
-        std::cout << ' ' << value;
-    }
-    std::cout << (solution.empty() ? " <no solution>" : "") << std::endl;
+    // // 2x + y = 5, x - 3y = -8  ->  x = 1, y = 3. Eigen does the work inside
+    // // mathutils; nothing about it reaches this translation unit.
+    // const std::vector<double> solution =
+    //     mathutils::solveLinearSystem({{2.0, 1.0}, {1.0, -3.0}}, {5.0, -8.0});
+    // std::cout << "solved  =";
+    // for (double value : solution) {
+    //     std::cout << ' ' << value;
+    // }
+    // std::cout << (solution.empty() ? " <no solution>" : "") << std::endl;
 
-    const std::string phrase = "  A man, a plan, a canal: Panama  ";
-    const std::string trimmed = stringutils::trim(phrase);
+    // const std::string phrase = "  A man, a plan, a canal: Panama  ";
+    // const std::string trimmed = stringutils::trim(phrase);
 
-    std::cout << "trimmed    = [" << trimmed << "]\n";
-    std::cout << "upper      = " << stringutils::toUpper(trimmed) << '\n';
-    std::cout << "lower      = " << stringutils::toLower(trimmed) << '\n';
-    std::cout << "reversed   = " << stringutils::reverse(trimmed) << '\n';
-    std::cout << "palindrome = " << (stringutils::isPalindrome(trimmed) ? "yes" : "no") << '\n';
+    // std::cout << "trimmed    = [" << trimmed << "]\n";
+    // std::cout << "upper      = " << stringutils::toUpper(trimmed) << '\n';
+    // std::cout << "lower      = " << stringutils::toLower(trimmed) << '\n';
+    // std::cout << "reversed   = " << stringutils::reverse(trimmed) << '\n';
+    // std::cout << "palindrome = " << (stringutils::isPalindrome(trimmed) ? "yes" : "no") << '\n';
 
-    const std::vector<std::string> words = stringutils::split("alpha,beta,gamma", ',');
-    std::cout << "joined     = " << stringutils::join(words, " | ") << std::endl;
+    // const std::vector<std::string> words = stringutils::split("alpha,beta,gamma", ',');
+    // std::cout << "joined     = " << stringutils::join(words, " | ") << std::endl;
 
     std::cout << "opencv     = " << imageutils::openCvVersion() << '\n';
 
@@ -130,6 +130,8 @@ int main(int argc, char** argv) {
             return 1;
         }
         std::cout << "show       = closed\n";
+        const imageutils::Image gray = imageutils::toGrayscale(picture);
+        gray.show("Grayscale");
     }
 
     if (wantCamera) {
