@@ -48,6 +48,15 @@ public:
     bool showCameraPreview(int cameraIndex = 0,
                            const std::string& windowTitle = "Original") const;
 
+    // Shows this image in a window and blocks until the viewer dismisses it --
+    // any key, or the window's close button. Nothing is modified, hence const.
+    //
+    // Returns false when the image is empty, and when there is no display to
+    // draw into (a headless session, or an OpenCV built without GUI support).
+    // Both are ordinary outcomes, reported in-band like every other failure in
+    // this header, so callers check the bool rather than catching.
+    bool show(const std::string& windowTitle = "Image") const;
+
     bool empty() const;
     int width() const;     // 0 when empty
     int height() const;    // 0 when empty

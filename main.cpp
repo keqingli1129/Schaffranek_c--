@@ -77,14 +77,39 @@ int main(int argc, char** argv) {
     std::cout << "saved      = " << outputPath << " (" << (saved ? "yes" : "no") << ")"
               << std::endl;
 
-    // Opt-in: the preview blocks until Esc and needs both a camera and a
-    // display, so it must never run in a headless build or a test harness.
-    const bool wantCamera = [&] {
-        for (int i = 1; i < argc; ++i) {
-            if (std::string_view(argv[i]) == "--camera") { return true; }
+    // Opt-in: both viewers block until dismissed and need a display, so they
+    // must never run in a headless build or a test harness. "--show" takes an
+    // optional path; without one it falls back to the image in the source tree.
+    bool wantCamera = false;
+    bool wantShow = false;
+    std::string showPath = PROJECT_IMAGE_PATH;
+    for (int i = 1; i < argc; ++i) {
+        const std::string_view arg(argv[i]);
+        if (arg == "--camera") {
+            wantCamera = true;
+        } else if (arg == "--show") {
+            wantShow = true;
+            // A following argument that is not itself a flag is the path.
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                showPath = argv[++i];
+            }
         }
-        return false;
-    }();
+    }
+
+    if (wantShow) {
+        imageutils::Image picture;
+        if (!picture.load(showPath)) {
+            std::cout << "show       = cannot load " << showPath << '\n';
+            return 1;
+        }
+        if (!report("show      ", picture)) { return 1; }
+        std::cout << "show       = " << showPath << " (any key to close)" << std::endl;
+        if (!picture.show(showPath)) {
+            std::cout << "show       = no display\n";
+            return 1;
+        }
+        std::cout << "show       = closed\n";
+    }
 
     if (wantCamera) {
         std::cout << "camera     = opening (Esc to close)" << std::endl;

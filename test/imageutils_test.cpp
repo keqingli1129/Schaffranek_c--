@@ -46,6 +46,11 @@ int main() {
     // Saving an empty image fails rather than writing a file.
     CHECK(!blank.save("should_not_be_created.png"));
 
+    // Showing an empty image fails without ever touching the GUI, so this is
+    // safe under a headless test runner. A non-empty image is not shown here:
+    // show() blocks until a viewer dismisses the window.
+    CHECK(!blank.show("should_not_be_shown"));
+
     // The handle is move-only and moves cleanly.
     imageutils::Image moved = std::move(missing);
     CHECK(moved.empty());

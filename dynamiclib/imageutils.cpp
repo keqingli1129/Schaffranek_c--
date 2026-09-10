@@ -137,6 +137,44 @@ bool Image::showCameraPreview(int cameraIndex, const std::string& windowTitle) c
     }
 }
 
+bool Image::show(const std::string& windowTitle) const {
+    // Long enough to pump the GUI event loop without spinning the CPU, short
+    // enough that the close button still feels immediate. A single blocking
+    // waitKey(0) would not do: it never returns when the window is closed with
+    // the mouse instead of the keyboard.
+    constexpr int kPollMs = 30;
+
+    if (empty()) {
+        return false;
+    }
+
+    try {
+        cv::namedWindow(windowTitle, cv::WINDOW_AUTOSIZE);
+        cv::imshow(windowTitle, impl_->mat);
+
+        while (true) {
+            // >= 0 is any key; -1 is the poll timing out with nothing pressed.
+            if (cv::waitKey(kPollMs) >= 0) {
+                break;
+            }
+            if (cv::getWindowProperty(windowTitle, cv::WND_PROP_VISIBLE) < 1) {
+                break;
+            }
+        }
+
+        cv::destroyWindow(windowTitle);
+        return true;
+    } catch (const cv::Exception&) {
+        // Includes the headless case: a build without GUI support throws from
+        // namedWindow/imshow rather than returning an error.
+        try {
+            cv::destroyWindow(windowTitle);
+        } catch (const cv::Exception&) {
+        }
+        return false;
+    }
+}
+
 bool Image::empty() const {
     return !impl_ || impl_->mat.empty();
 }
