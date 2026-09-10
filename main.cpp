@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -6,6 +7,25 @@
 #include "mathutils.h"
 #include "stringutils.h"
 #include "imageutils.h"
+
+namespace {
+
+// The demo's files live in the project folder, but the binary sits in build/
+// and an IDE run button starts it in a directory of its own choosing. So look
+// at the working directory and walk up to the folder holding CMakeLists.txt;
+// that covers being launched from the project root or from build/ alike.
+// Falls back to the working directory when there is nothing to find.
+std::filesystem::path projectDir() {
+    const std::filesystem::path cwd = std::filesystem::current_path();
+    for (std::filesystem::path dir = cwd; dir != dir.parent_path(); dir = dir.parent_path()) {
+        if (std::filesystem::exists(dir / "CMakeLists.txt")) {
+            return dir;
+        }
+    }
+    return cwd;
+}
+
+}  // namespace
 
 int main(int argc, char** argv) {
     std::string name;
@@ -72,7 +92,8 @@ int main(int argc, char** argv) {
     const imageutils::Image blurred = imageutils::blur(resized, 5);
     if (!report("blurred   ", blurred)) { return 1; }
 
-    const std::string outputPath = "imageutils_demo.png";
+    const std::filesystem::path project = projectDir();
+    const std::string outputPath = (project / "imageutils_demo.png").string();
     const bool saved = blurred.save(outputPath);
     std::cout << "saved      = " << outputPath << " (" << (saved ? "yes" : "no") << ")"
               << std::endl;
@@ -82,7 +103,7 @@ int main(int argc, char** argv) {
     // optional path; without one it falls back to the image in the source tree.
     bool wantCamera = false;
     bool wantShow = false;
-    std::string showPath = PROJECT_IMAGE_PATH;
+    std::string showPath = (project / "Screenshot.png").string();
     for (int i = 1; i < argc; ++i) {
         const std::string_view arg(argv[i]);
         if (arg == "--camera") {
