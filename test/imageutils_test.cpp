@@ -151,6 +151,11 @@ int main() {
     CHECK(!imageutils::blur(small, 4).empty());
     CHECK(!imageutils::blur(small, 0).empty());
 
+    // Playing a path that is not an existing file fails before any window is
+    // created, so this is safe under a headless runner just like show() above.
+    CHECK(!imageutils::playVideo("this_video_does_not_exist_12345.mp4"));
+    CHECK(!imageutils::playVideo("."));
+
     // Case 11: every transform tolerates an empty input.
     const imageutils::Image none;
     CHECK(imageutils::toGrayscale(none).empty());

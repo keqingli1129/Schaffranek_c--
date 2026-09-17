@@ -118,7 +118,11 @@ int main(int argc, char** argv) {
     // optional path; without one it falls back to the image in the source tree.
     bool wantCamera = false;
     bool wantShow = false;
+    bool wantPlay = false;
     std::string showPath = (project / "Screenshot.png").string();
+    // No sample video ships with the project, so "--play" has no fallback: the
+    // path is the argument's whole point.
+    std::string playPath;
     for (int i = 1; i < argc; ++i) {
         const std::string_view arg(argv[i]);
         if (arg == "--camera") {
@@ -128,6 +132,11 @@ int main(int argc, char** argv) {
             // A following argument that is not itself a flag is the path.
             if (i + 1 < argc && argv[i + 1][0] != '-') {
                 showPath = argv[++i];
+            }
+        } else if (arg == "--play") {
+            wantPlay = true;
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                playPath = argv[++i];
             }
         }
     }
@@ -153,6 +162,20 @@ int main(int argc, char** argv) {
         // showHsv() above, this one is a real picture, not a channel dump.
         std::cout << "hue-shift  = +90 deg (any key to close)" << std::endl;
         imageutils::adjustHsv(picture, 90, 1.2, 0.9).show("Hue +90");
+    }
+
+    if (wantPlay) {
+        if (playPath.empty()) {
+            std::cout << "play       = --play needs a video file path\n";
+            return 1;
+        }
+        std::cout << "play       = " << playPath
+                  << " (Space pauses, Esc quits)" << std::endl;
+        if (!imageutils::playVideo(playPath, playPath)) {
+            std::cout << "play       = cannot play " << playPath << '\n';
+            return 1;
+        }
+        std::cout << "play       = finished\n";
     }
 
     if (wantCamera) {

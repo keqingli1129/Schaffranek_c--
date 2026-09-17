@@ -201,6 +201,93 @@ int Image::channels() const {
     return empty() ? 0 : impl_->mat.channels();
 }
 
+bool playVideo(const std::string& path, const std::string& windowTitle) {
+    constexpr int kEscape = 27;
+    constexpr int kSpace = 32;
+    // While paused there is no frame to pace against, so just pump the GUI
+    // event loop often enough that Space and the close button stay responsive.
+    constexpr int kPausedPollMs = 30;
+    // What to fall back to when the container declares no usable frame rate --
+    // some webcam captures and a few odd files report 0 or NaN.
+    constexpr double kFallbackFps = 25.0;
+
+    // Keep videoio's own backend warnings off the consumer's stderr for the
+    // common bad-path case, exactly as Image::load does for imgcodecs.
+    try {
+        if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path)) {
+            return false;
+        }
+    } catch (const std::filesystem::filesystem_error&) {
+        return false;
+    }
+
+    try {
+        cv::VideoCapture capture(path);
+        if (!capture.isOpened()) {
+            return false;
+        }
+
+        const double fps = capture.get(cv::CAP_PROP_FPS);
+        // NaN fails both comparisons, so this catches it along with 0 and the
+        // nonsense values some containers carry.
+        const double usableFps = (fps > 0.0 && fps < 1000.0) ? fps : kFallbackFps;
+        // At least 1ms: waitKey(0) would block forever instead of advancing.
+        const int frameDelayMs = std::max(1, static_cast<int>(1000.0 / usableFps));
+
+        cv::namedWindow(windowTitle, cv::WINDOW_AUTOSIZE);
+
+        cv::Mat frame;
+        bool stopped = false;
+        while (!stopped) {
+            capture >> frame;
+            // An empty frame is the end of the video, not a failure.
+            if (frame.empty()) {
+                break;
+            }
+
+            cv::imshow(windowTitle, frame);
+
+            int key = cv::waitKey(frameDelayMs);
+            if (key == kSpace) {
+                // Hold on the frame already on screen. Re-showing it is not
+                // needed; only the event loop has to keep running.
+                while (true) {
+                    key = cv::waitKey(kPausedPollMs);
+                    if (key == kSpace || key == kEscape) {
+                        break;
+                    }
+                    if (cv::getWindowProperty(windowTitle, cv::WND_PROP_VISIBLE) < 1) {
+                        stopped = true;
+                        break;
+                    }
+                }
+            }
+
+            if (key == kEscape) {
+                break;
+            }
+
+            // The window's own close button has to end playback too; otherwise
+            // the next imshow would silently recreate the window and the video
+            // would be unstoppable except by Esc.
+            if (!stopped && cv::getWindowProperty(windowTitle, cv::WND_PROP_VISIBLE) < 1) {
+                break;
+            }
+        }
+
+        cv::destroyWindow(windowTitle);
+        return true;
+    } catch (const cv::Exception&) {
+        // Includes the headless case: a build without GUI support throws from
+        // namedWindow/imshow rather than returning an error.
+        try {
+            cv::destroyWindow(windowTitle);
+        } catch (const cv::Exception&) {
+        }
+        return false;
+    }
+}
+
 Image makeTestPattern(int width, int height) {
     if (width <= 0 || height <= 0) {
         return Image{};

@@ -79,6 +79,22 @@ private:
     friend struct detail::Access;
 };
 
+// Plays a video file in a window, frame after frame, paced by the frame rate
+// the file declares. Blocks until the video ends, Esc is pressed or the window
+// is closed; Space pauses and resumes. A foreground call, exactly like
+// Image::showCameraPreview() -- not a background stream.
+//
+// A viewer, not a loader: frames go straight to the window and none of them is
+// decoded into an Image, because the frame on screen when playback stops is
+// whichever one happened to be there, not one anybody chose.
+//
+// Returns false when the file is missing or cannot be opened -- wrong path, or
+// a container or codec this OpenCV build has no decoder for -- and when there
+// is no display to draw into. Ordinary outcomes, reported in-band like every
+// other failure in this header, so callers check the bool rather than catching.
+IMAGEUTILS_API bool playVideo(const std::string& path,
+                              const std::string& windowTitle = "Video");
+
 // Synthesized 3-channel BGR pattern: blue ramps with x, green ramps with y, red
 // is a 16-pixel checkerboard. Deterministic, so tests can assert on it. Exists so
 // the demo and the tests need no image files on disk. Empty Image if width or
