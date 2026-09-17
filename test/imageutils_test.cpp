@@ -116,6 +116,21 @@ int main() {
     // safe under a headless runner, exactly like the show() check above.
     CHECK(!blank.showHsv("should_not_be_shown"));
 
+    // adjustHsv returns a displayable BGR image, not HSV data, and keeps the
+    // geometry. A grayscale source is widened to 3 channels on the way.
+    const imageutils::Image shifted = imageutils::adjustHsv(pattern, 120, 1.5, 0.8);
+    CHECK(!shifted.empty());
+    CHECK(shifted.channels() == 3);
+    CHECK(shifted.width() == pattern.width());
+    CHECK(shifted.height() == pattern.height());
+    CHECK(imageutils::adjustHsv(gray, 45).channels() == 3);
+
+    // Out-of-range arguments are absorbed rather than rejected: the hue wraps
+    // both ways, and a negative scale clamps to 0 (a full desaturate).
+    CHECK(!imageutils::adjustHsv(pattern, 720).empty());
+    CHECK(!imageutils::adjustHsv(pattern, -30).empty());
+    CHECK(!imageutils::adjustHsv(pattern, 0, -1.0, -1.0).empty());
+
     // Case 5: resize hits the requested size exactly.
     const imageutils::Image small = imageutils::resize(gray, 32, 16);
     CHECK(small.width() == 32);
@@ -140,6 +155,7 @@ int main() {
     const imageutils::Image none;
     CHECK(imageutils::toGrayscale(none).empty());
     CHECK(imageutils::toHsv(none).empty());
+    CHECK(imageutils::adjustHsv(none, 90).empty());
     CHECK(imageutils::resize(none, 8, 8).empty());
     CHECK(imageutils::blur(none, 3).empty());
 

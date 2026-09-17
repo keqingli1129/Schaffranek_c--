@@ -264,6 +264,50 @@ Image toHsv(const Image& src) {
     }
 }
 
+Image adjustHsv(const Image& src, int hueShiftDegrees, double saturationScale,
+                double valueScale) {
+    if (src.empty()) {
+        return Image{};
+    }
+    try {
+        const cv::Mat& input = detail::Access::mat(src);
+        cv::Mat bgr;
+        if (input.channels() == 1) {
+            cv::cvtColor(input, bgr, cv::COLOR_GRAY2BGR);
+        } else {
+            bgr = input;
+        }
+
+        cv::Mat hsv;
+        cv::cvtColor(bgr, hsv, cv::COLOR_BGR2HSV);
+
+        // OpenCV packs a 0-360 hue into a byte by halving it, so a degree of
+        // rotation is half a step. Wrap first, then halve, so that a shift of
+        // 359 does not turn into 179.5 truncated twice over.
+        const int wrapped = ((hueShiftDegrees % 360) + 360) % 360;
+        const int hueOffset = wrapped / 2;
+        const double saturation = std::max(saturationScale, 0.0);
+        const double value = std::max(valueScale, 0.0);
+
+        for (int y = 0; y < hsv.rows; ++y) {
+            auto* row = hsv.ptr<cv::Vec3b>(y);
+            for (int x = 0; x < hsv.cols; ++x) {
+                cv::Vec3b& pixel = row[x];
+                // Hue wraps around the wheel; saturation and value clamp.
+                pixel[0] = static_cast<unsigned char>((pixel[0] + hueOffset) % 180);
+                pixel[1] = cv::saturate_cast<unsigned char>(pixel[1] * saturation);
+                pixel[2] = cv::saturate_cast<unsigned char>(pixel[2] * value);
+            }
+        }
+
+        cv::Mat output;
+        cv::cvtColor(hsv, output, cv::COLOR_HSV2BGR);
+        return detail::Access::wrap(std::move(output));
+    } catch (const cv::Exception&) {
+        return Image{};
+    }
+}
+
 Image resize(const Image& src, int width, int height) {
     if (src.empty() || width <= 0 || height <= 0) {
         return Image{};

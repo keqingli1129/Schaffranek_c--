@@ -93,6 +93,19 @@ IMAGEUTILS_API Image toGrayscale(const Image& src);
 // so it converts to a zero-hue, zero-saturation image rather than failing.
 IMAGEUTILS_API Image toHsv(const Image& src);
 
+// HSV-space edit, returned as an ordinary 3-channel BGR image -- unlike
+// toHsv(), the result is meant to be looked at, saved and shown directly.
+//
+// hueShiftDegrees rotates the hue wheel and wraps, so -30 and 330 do the same
+// thing; it is given in real degrees (0-360), not OpenCV's halved 0-179.
+// saturationScale and valueScale multiply those channels and are clamped at 0;
+// values above 1 saturate at 255 rather than wrapping. Passing 0, 1.0, 1.0
+// gives a copy of src. Single-channel input is treated as grayscale BGR first.
+//
+// Empty Image if src is empty.
+IMAGEUTILS_API Image adjustHsv(const Image& src, int hueShiftDegrees,
+                               double saturationScale = 1.0, double valueScale = 1.0);
+
 // Resized copy. Returns an empty Image if width or height <= 0.
 IMAGEUTILS_API Image resize(const Image& src, int width, int height);
 

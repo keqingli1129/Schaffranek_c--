@@ -92,7 +92,22 @@ int main(int argc, char** argv) {
     const imageutils::Image blurred = imageutils::blur(resized, 5);
     if (!report("blurred   ", blurred)) { return 1; }
 
+    // adjustHsv() works in HSV but hands back a normal BGR image, so its result
+    // can be saved and shown like any other: +120 degrees of hue, saturation
+    // pushed up by half, brightness left alone.
+    const imageutils::Image shifted = imageutils::adjustHsv(pattern, 120, 1.5, 1.0);
+    if (!report("hue-shift ", shifted)) { return 1; }
+
+    // The same call with a zero saturation scale is a desaturate -- the colours
+    // collapse to grey while the image stays 3-channel BGR.
+    const imageutils::Image desaturated = imageutils::adjustHsv(pattern, 0, 0.0, 1.0);
+    if (!report("desaturate", desaturated)) { return 1; }
+
     const std::filesystem::path project = projectDir();
+    const std::string shiftedPath = (project / "imageutils_hsv_shift.png").string();
+    std::cout << "hue-saved  = " << shiftedPath << " ("
+              << (shifted.save(shiftedPath) ? "yes" : "no") << ")\n";
+
     const std::string outputPath = (project / "imageutils_demo.png").string();
     const bool saved = blurred.save(outputPath);
     std::cout << "saved      = " << outputPath << " (" << (saved ? "yes" : "no") << ")"
@@ -134,6 +149,10 @@ int main(int argc, char** argv) {
         gray.show("Grayscale");
         std::cout << "hsv        = (any key to close)" << std::endl;
         picture.showHsv("HSV");
+        // Same picture, hue rotated a quarter turn and a touch darker. Unlike
+        // showHsv() above, this one is a real picture, not a channel dump.
+        std::cout << "hue-shift  = +90 deg (any key to close)" << std::endl;
+        imageutils::adjustHsv(picture, 90, 1.2, 0.9).show("Hue +90");
     }
 
     if (wantCamera) {
