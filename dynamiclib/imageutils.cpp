@@ -175,6 +175,16 @@ bool Image::show(const std::string& windowTitle) const {
     }
 }
 
+bool Image::showHsv(const std::string& windowTitle) const {
+    // The conversion is the only new work here; the window handling, the
+    // close-button polling and the headless case are all show()'s already.
+    const Image hsv = toHsv(*this);
+    if (hsv.empty()) {
+        return false;
+    }
+    return hsv.show(windowTitle);
+}
+
 bool Image::empty() const {
     return !impl_ || impl_->mat.empty();
 }
@@ -232,6 +242,28 @@ Image toGrayscale(const Image& src) {
     }
 }
 
+Image toHsv(const Image& src) {
+    if (src.empty()) {
+        return Image{};
+    }
+    try {
+        const cv::Mat& input = detail::Access::mat(src);
+        cv::Mat output;
+        if (input.channels() == 1) {
+            // cvtColor has no GRAY2HSV; go through BGR, which yields hue 0 and
+            // saturation 0 with the original intensity as value.
+            cv::Mat bgr;
+            cv::cvtColor(input, bgr, cv::COLOR_GRAY2BGR);
+            cv::cvtColor(bgr, output, cv::COLOR_BGR2HSV);
+        } else {
+            cv::cvtColor(input, output, cv::COLOR_BGR2HSV);
+        }
+        return detail::Access::wrap(std::move(output));
+    } catch (const cv::Exception&) {
+        return Image{};
+    }
+}
+
 Image resize(const Image& src, int width, int height) {
     if (src.empty() || width <= 0 || height <= 0) {
         return Image{};
@@ -259,6 +291,25 @@ Image blur(const Image& src, int kernelSize) {
         cv::Mat output;
         cv::GaussianBlur(detail::Access::mat(src), output, cv::Size(kernel, kernel), 0);
         return detail::Access::wrap(std::move(output));
+    } catch (const cv::Exception&) {
+        return Image{};
+    }
+}
+
+Image colorMask(const Image& src, const HsvRange& range) {
+    if (src.empty()) {
+        return Image{};
+    }
+    try {
+        cv::Mat hsv;
+        cv::cvtColor(detail::Access::mat(src), hsv, cv::COLOR_BGR2HSV);
+
+        cv::Mat mask;
+        cv::inRange(hsv,
+                    cv::Scalar(range.lowH, range.lowS, range.lowV),
+                    cv::Scalar(range.highH, range.highS, range.highV),
+                    mask);
+        return detail::Access::wrap(std::move(mask));
     } catch (const cv::Exception&) {
         return Image{};
     }

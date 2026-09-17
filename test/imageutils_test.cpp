@@ -99,6 +99,23 @@ int main() {
     CHECK(grayTwice.channels() == 1);
     CHECK(grayTwice.width() == gray.width());
 
+    // HSV keeps the geometry and stays 3-channel.
+    const imageutils::Image hsv = imageutils::toHsv(pattern);
+    CHECK(!hsv.empty());
+    CHECK(hsv.channels() == 3);
+    CHECK(hsv.width() == pattern.width());
+    CHECK(hsv.height() == pattern.height());
+
+    // Single-channel input goes through BGR instead of failing.
+    const imageutils::Image hsvFromGray = imageutils::toHsv(gray);
+    CHECK(!hsvFromGray.empty());
+    CHECK(hsvFromGray.channels() == 3);
+    CHECK(hsvFromGray.width() == gray.width());
+
+    // Showing an empty image as HSV fails before touching the GUI, so this is
+    // safe under a headless runner, exactly like the show() check above.
+    CHECK(!blank.showHsv("should_not_be_shown"));
+
     // Case 5: resize hits the requested size exactly.
     const imageutils::Image small = imageutils::resize(gray, 32, 16);
     CHECK(small.width() == 32);
@@ -122,6 +139,7 @@ int main() {
     // Case 11: every transform tolerates an empty input.
     const imageutils::Image none;
     CHECK(imageutils::toGrayscale(none).empty());
+    CHECK(imageutils::toHsv(none).empty());
     CHECK(imageutils::resize(none, 8, 8).empty());
     CHECK(imageutils::blur(none, 3).empty());
 

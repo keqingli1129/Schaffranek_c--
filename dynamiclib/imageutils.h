@@ -57,6 +57,16 @@ public:
     // this header, so callers check the bool rather than catching.
     bool show(const std::string& windowTitle = "Image") const;
 
+    // Converts to HSV and shows the result in a window, blocking exactly like
+    // show(). What appears on screen is the HSV data drawn as if it were BGR --
+    // hue in the blue channel, saturation in green, value in red -- which is
+    // the usual way of eyeballing an HSV decomposition, not a second rendering
+    // of the original colours.
+    //
+    // Returns false when the image is empty, when the conversion fails, and
+    // when there is no display to draw into.
+    bool showHsv(const std::string& windowTitle = "HSV") const;
+
     bool empty() const;
     int width() const;     // 0 when empty
     int height() const;    // 0 when empty
@@ -78,11 +88,25 @@ IMAGEUTILS_API Image makeTestPattern(int width, int height);
 // Single-channel copy of src. Already-grayscale input is passed through.
 IMAGEUTILS_API Image toGrayscale(const Image& src);
 
+// 3-channel HSV copy of src, with the OpenCV 8-bit ranges: H in [0, 180),
+// S and V in [0, 255]. Single-channel input is treated as grayscale BGR first,
+// so it converts to a zero-hue, zero-saturation image rather than failing.
+IMAGEUTILS_API Image toHsv(const Image& src);
+
 // Resized copy. Returns an empty Image if width or height <= 0.
 IMAGEUTILS_API Image resize(const Image& src, int width, int height);
 
 // Gaussian blur. kernelSize is forced odd and >= 1; even values are incremented.
 IMAGEUTILS_API Image blur(const Image& src, int kernelSize);
+// Inclusive HSV bounds, in OpenCV's 8-bit convention: H is 0-179, S and V are
+// 0-255. See the note on hue halving if you're translating from a 0-360 H
+// or a color picker's 0-100% S/V.
+struct HsvRange {
+    int lowH = 0,  lowS = 0,   lowV = 0;
+    int highH = 179, highS = 255, highV = 255;
+};
+
+IMAGEUTILS_API Image colorMask(const Image& src, const HsvRange& range);
 
 // Runtime OpenCV version string, e.g. "4.6.0".
 IMAGEUTILS_API std::string openCvVersion();

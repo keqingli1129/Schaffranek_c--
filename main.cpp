@@ -132,6 +132,8 @@ int main(int argc, char** argv) {
         std::cout << "show       = closed\n";
         const imageutils::Image gray = imageutils::toGrayscale(picture);
         gray.show("Grayscale");
+        std::cout << "hsv        = (any key to close)" << std::endl;
+        picture.showHsv("HSV");
     }
 
     if (wantCamera) {
