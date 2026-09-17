@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <iostream>
 #include <string>
+#include <system_error>
 #include <string_view>
 #include <vector>
 
@@ -162,6 +163,21 @@ int main(int argc, char** argv) {
         // showHsv() above, this one is a real picture, not a channel dump.
         std::cout << "hue-shift  = +90 deg (any key to close)" << std::endl;
         imageutils::adjustHsv(picture, 90, 1.2, 0.9).show("Hue +90");
+    }
+
+    if (wantPlay && !playPath.empty()) {
+        // The binary usually runs from build/, so a relative path that isn't
+        // there is worth one retry against the project folder -- the same
+        // reasoning that projectDir() exists for. An absolute path, or a
+        // relative one that already resolves, is left exactly as given.
+        std::error_code ec;
+        const std::filesystem::path given(playPath);
+        if (given.is_relative() && !std::filesystem::exists(given, ec)) {
+            const std::filesystem::path inProject = (project / given).lexically_normal();
+            if (std::filesystem::exists(inProject, ec)) {
+                playPath = inProject.string();
+            }
+        }
     }
 
     if (wantPlay) {
