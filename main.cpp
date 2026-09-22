@@ -80,8 +80,27 @@ int main(int argc, char** argv) {
         return !image.empty();
     };
 
+    // Needed before the first load, and again later for the demo's outputs.
+    const std::filesystem::path project = projectDir();
+
     const imageutils::Image pattern = imageutils::makeTestPattern(256, 128);
     if (!report("pattern   ", pattern)) { return 1; }
+
+    // The HSV samples below run on the real screenshot from the source tree --
+    // a photograph responds to a hue rotation in a way a synthetic pattern
+    // cannot. It is tracked in git, but a checkout could still be missing it,
+    // so fall back to a pattern rather than failing the whole demo. Image is
+    // move-only, so the fallback moves in a fresh one; `pattern` cannot be
+    // copied here, which is the type doing its job.
+    const std::string sourcePath = (project / "Screenshot.png").string();
+    imageutils::Image source;
+    if (!source.load(sourcePath)) {
+        std::cout << "src-path   = " << sourcePath << " not found, using pattern\n";
+        source = imageutils::makeTestPattern(pattern.width(), pattern.height());
+    } else {
+        std::cout << "src-path   = " << sourcePath << '\n';
+    }
+    if (!report("source    ", source)) { return 1; }
 
     // Chained in memory -- no disk round trip between steps.
     const imageutils::Image gray = imageutils::toGrayscale(pattern);
@@ -96,18 +115,58 @@ int main(int argc, char** argv) {
     // adjustHsv() works in HSV but hands back a normal BGR image, so its result
     // can be saved and shown like any other: +120 degrees of hue, saturation
     // pushed up by half, brightness left alone.
-    const imageutils::Image shifted = imageutils::adjustHsv(pattern, 120, 1.5, 1.0);
+    const imageutils::Image shifted = imageutils::adjustHsv(source, 120, 1.5, 1.0);
     if (!report("hue-shift ", shifted)) { return 1; }
 
     // The same call with a zero saturation scale is a desaturate -- the colours
     // collapse to grey while the image stays 3-channel BGR.
-    const imageutils::Image desaturated = imageutils::adjustHsv(pattern, 0, 0.0, 1.0);
+    const imageutils::Image desaturated = imageutils::adjustHsv(source, 0, 0.0, 1.0);
     if (!report("desaturate", desaturated)) { return 1; }
 
-    const std::filesystem::path project = projectDir();
-    const std::string shiftedPath = (project / "imageutils_hsv_shift.png").string();
-    std::cout << "hue-saved  = " << shiftedPath << " ("
-              << (shifted.save(shiftedPath) ? "yes" : "no") << ")\n";
+    // Hue is given in real degrees and wraps both ways, so -240 names the same
+    // rotation as the +120 above and produces a byte-identical image. Anything
+    // outside 0-360 is absorbed the same way; 720 lands back on 0.
+    const imageutils::Image wrapped = imageutils::adjustHsv(source, -240, 1.5, 1.0);
+    if (!report("hue-wrap  ", wrapped)) { return 1; }
+
+    // valueScale is the brightness dial: below 1 darkens, above 1 brightens and
+    // clips at white instead of wrapping back around to black.
+    const imageutils::Image dimmed = imageutils::adjustHsv(source, 0, 1.0, 0.5);
+    if (!report("dimmed    ", dimmed)) { return 1; }
+
+    const imageutils::Image brightened = imageutils::adjustHsv(source, 0, 1.0, 1.8);
+    if (!report("brightened", brightened)) { return 1; }
+
+    // A grayscale source carries no hue to rotate, but the call still works:
+    // it is widened to 3-channel BGR first, so only valueScale shows up.
+    const imageutils::Image grayLifted = imageutils::adjustHsv(imageutils::toGrayscale(source), 200, 1.0, 1.3);
+    if (!report("gray-hsv  ", grayLifted)) { return 1; }
+
+    // 0 degrees with both scales at 1 changes nothing in HSV, but the result is
+    // still a BGR->HSV->BGR round trip, and 8-bit HSV cannot represent every
+    // BGR colour exactly (hue is halved into 0-179). So this is the visual
+    // baseline for the numbers above, not a bit-exact copy: on the screenshot
+    // about a third of the channel values move, by up to 3 levels out of 255.
+    const imageutils::Image unchanged = imageutils::adjustHsv(source, 0, 1.0, 1.0);
+    if (!report("unchanged ", unchanged)) { return 1; }
+
+    // Failure stays in-band here as everywhere else in imageutils: an empty
+    // source yields an empty result, so callers test instead of catching.
+    const imageutils::Image fromEmpty = imageutils::adjustHsv(imageutils::Image{}, 90);
+    std::cout << "empty-src  = " << (fromEmpty.empty() ? "empty, as expected" : "unexpected")
+              << '\n';
+
+    // Worth looking at now that the source is a photograph. *.png is gitignored,
+    // so these land beside the screenshot without becoming repository noise.
+    const auto saveSample = [&project](const char* name, const imageutils::Image& image) {
+        const std::string path =
+            (project / ("imageutils_hsv_" + std::string(name) + ".png")).string();
+        std::cout << "saved      = " << path << " (" << (image.save(path) ? "yes" : "no") << ")\n";
+    };
+    saveSample("shift", shifted);
+    saveSample("desaturated", desaturated);
+    saveSample("dimmed", dimmed);
+    saveSample("brightened", brightened);
 
     const std::string outputPath = (project / "imageutils_demo.png").string();
     const bool saved = blurred.save(outputPath);
@@ -120,7 +179,7 @@ int main(int argc, char** argv) {
     bool wantCamera = false;
     bool wantShow = false;
     bool wantPlay = false;
-    std::string showPath = (project / "Screenshot.png").string();
+    std::string showPath = sourcePath;
     // No sample video ships with the project, so "--play" has no fallback: the
     // path is the argument's whole point.
     std::string playPath;

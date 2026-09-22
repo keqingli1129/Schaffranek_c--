@@ -244,7 +244,7 @@ bool playVideo(const std::string& path, const std::string& windowTitle) {
             if (frame.empty()) {
                 break;
             }
-
+            // cv::circle(frame, cv::Point(frame.cols / 2, frame.rows / 2), 50, cv::Scalar(0, 0, 255), 3);
             cv::imshow(windowTitle, frame);
 
             int key = cv::waitKey(frameDelayMs);
