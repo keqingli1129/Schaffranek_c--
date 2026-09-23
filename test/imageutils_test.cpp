@@ -156,6 +156,32 @@ int main() {
     CHECK(!imageutils::playVideo("this_video_does_not_exist_12345.mp4"));
     CHECK(!imageutils::playVideo("."));
 
+    // Case 9: drawCircle mutates in place and leaves the geometry alone. A
+    // centre outside the image is clipped, not rejected -- the call still
+    // succeeds because nothing about the request was wrong.
+    imageutils::Image canvas = imageutils::makeTestPattern(64, 64);
+    CHECK(canvas.drawCircle(32, 32, 10, imageutils::Color{0, 0, 255}));
+    CHECK(canvas.width() == 64);
+    CHECK(canvas.height() == 64);
+    CHECK(canvas.channels() == 3);
+    CHECK(canvas.drawCircle(-100, -100, 5));              // fully off-image
+    CHECK(canvas.drawCircle(1000, 32, 4));                // off the right edge
+    CHECK(canvas.drawCircle(32, 32, 0));                  // degenerate, allowed
+    CHECK(canvas.drawCircle(32, 32, 12, imageutils::Color{255, 0, 0}, 2));
+    CHECK(canvas.drawCircle(32, 32, 12, imageutils::Color{255, 0, 0}, -7));
+    // Out-of-range components clamp rather than throwing or wrapping.
+    CHECK(canvas.drawCircle(10, 10, 3, imageutils::Color{-40, 900, 12}));
+    // Single-channel targets are fine; only the first component is used.
+    imageutils::Image grayCanvas = imageutils::toGrayscale(canvas);
+    CHECK(grayCanvas.drawCircle(16, 16, 6, imageutils::Color{255, 0, 0}));
+    CHECK(grayCanvas.channels() == 1);
+
+    // Case 10: a negative radius is the one argument error, and an empty image
+    // has nothing to draw into.
+    CHECK(!canvas.drawCircle(32, 32, -1));
+    imageutils::Image blankCanvas;
+    CHECK(!blankCanvas.drawCircle(0, 0, 5));
+
     // Case 11: every transform tolerates an empty input.
     const imageutils::Image none;
     CHECK(imageutils::toGrayscale(none).empty());

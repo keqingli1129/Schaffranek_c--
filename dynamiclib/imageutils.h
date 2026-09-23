@@ -11,6 +11,23 @@ namespace detail {
 struct Access;
 }  // namespace detail
 
+// A colour to draw with: BGR components in OpenCV's channel order, 0-255.
+// Values outside that range are clamped rather than rejected.
+//
+// Defaults to black, which is worth knowing before using it: a black marker on
+// a dark image is drawn and invisible, not skipped. On a single-channel image
+// (a mask, or a grayscale conversion) only `blue` is used, because it is the
+// first component -- so Color{255, 0, 0} is white there, not blue.
+struct Color {
+    int blue = 0;
+    int green = 0;
+    int red = 0;
+};
+
+// Thickness sentinel: fill the shape rather than stroking its outline. Any
+// negative thickness means the same thing; this is the readable spelling.
+inline constexpr int kFilled = -1;
+
 // Owns a decoded image. Move-only: copying is deliberately disabled so that an
 // accidental pass-by-value never silently deep-copies pixel data.
 //
@@ -32,6 +49,26 @@ public:
     // Encodes to a file; the format is chosen from the extension. Returns false
     // on failure, including when the image is empty.
     bool save(const std::string& path) const;
+
+    // Draws a circle into this image, in place -- the only mutating operation
+    // here besides load(), and the reason it is not const.
+    //
+    // centerX and centerY are pixel coordinates in (x, y) order: x is the
+    // column, y is the row. That is OpenCV's drawing convention and the
+    // transpose of the (row, column) order its pixel accessors use, so the two
+    // are easy to swap by accident.
+    //
+    // radius is in pixels. thickness is the outline width, or kFilled for a
+    // solid disc; values below kFilled are treated as kFilled.
+    //
+    // A circle whose centre lies outside the image, or which runs off the
+    // edge, is clipped silently and still returns true -- nothing was wrong
+    // with the request, there was just less of it on screen.
+    //
+    // Returns false when the image is empty, when radius is negative, and when
+    // OpenCV rejects the request. In-band like every other failure here.
+    bool drawCircle(int centerX, int centerY, int radius,
+                    const Color& color = Color{}, int thickness = kFilled);
 
     // Opens a camera and shows its frames in a window, one after another, until
     // Esc is pressed or the window is closed. Blocks for as long as the preview

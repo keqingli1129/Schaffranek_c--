@@ -86,6 +86,29 @@ bool Image::save(const std::string& path) const {
     }
 }
 
+bool Image::drawCircle(int centerX, int centerY, int radius, const Color& color,
+                       int thickness) {
+    if (empty() || radius < 0) {
+        return false;
+    }
+    try {
+        // Scalar's components are BGR in the same order as Color's members, so
+        // this is a straight copy. On a single-channel image OpenCV reads only
+        // the first of them, which is why Color documents `blue` as the one
+        // that counts there.
+        const cv::Scalar bgr(std::clamp(color.blue, 0, 255),
+                             std::clamp(color.green, 0, 255),
+                             std::clamp(color.red, 0, 255));
+        // Anything below kFilled would be rejected by OpenCV; fold it onto the
+        // sentinel rather than failing, since "more negative" means nothing.
+        const int stroke = thickness < kFilled ? kFilled : thickness;
+        cv::circle(impl_->mat, cv::Point(centerX, centerY), radius, bgr, stroke);
+        return true;
+    } catch (const cv::Exception&) {
+        return false;
+    }
+}
+
 bool Image::showCameraPreview(int cameraIndex, const std::string& windowTitle) const {
     // cv::waitKey returns the raw key code; 27 is Esc.
     constexpr int kEscape = 27;
