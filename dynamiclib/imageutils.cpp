@@ -450,6 +450,34 @@ Image blur(const Image& src, int kernelSize) {
     }
 }
 
+Image bilateralFilter(const Image& src, int diameter, double sigmaColor,
+                      double sigmaSpace) {
+    if (src.empty()) {
+        return Image{};
+    }
+    try {
+        // Negative sigmas are meaningless to the weighting and OpenCV does not
+        // reject them, so fold them onto 0 rather than letting them produce
+        // something nobody can reason about.
+        const double colorSigma = std::max(sigmaColor, 0.0);
+        const double spaceSigma = std::max(sigmaSpace, 0.0);
+        // Anything <= 0 means "derive the neighbourhood from sigmaSpace", which
+        // is OpenCV's own convention; pass it through unchanged so the two
+        // spellings of that request stay one code path.
+        const int d = diameter > 0 ? diameter : -1;
+
+        // bilateralFilter refuses to work in place, so this must be a distinct
+        // Mat -- it cannot be the borrowed input aliased.
+        cv::Mat output;
+        cv::bilateralFilter(detail::Access::mat(src), output, d, colorSigma, spaceSigma);
+        return detail::Access::wrap(std::move(output));
+    } catch (const cv::Exception&) {
+        // 8-bit 1- and 3-channel input is all this filter supports; anything
+        // else lands here, in-band with every other failure in this file.
+        return Image{};
+    }
+}
+
 Image colorMask(const Image& src, const HsvRange& range) {
     if (src.empty()) {
         return Image{};

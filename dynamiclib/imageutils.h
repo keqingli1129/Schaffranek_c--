@@ -164,6 +164,28 @@ IMAGEUTILS_API Image resize(const Image& src, int width, int height);
 
 // Gaussian blur. kernelSize is forced odd and >= 1; even values are incremented.
 IMAGEUTILS_API Image blur(const Image& src, int kernelSize);
+
+// Edge-preserving smooth: averages neighbours the way blur() does, but weights
+// each one by how close its colour is as well as how close it is in space, so
+// flat areas are smoothed while edges stay sharp. The usual reason to reach for
+// it over blur() -- denoising or a skin-smoothing look without turning the
+// outlines to mush.
+//
+// diameter is the neighbourhood width in pixels; <= 0 asks OpenCV to derive it
+// from sigmaSpace, which is the usual way to call it. Cost grows with the
+// square of it: 5 is about the largest that keeps up with a video stream, 9 and
+// up is for stills.
+//
+// sigmaColor is how far apart two colours may be (0-255 units) and still be
+// mixed -- the edge-preserving dial. Past ~150 it stops distinguishing and
+// degenerates into an ordinary blur. sigmaSpace is the same idea in pixels, and
+// is what sets the neighbourhood when diameter <= 0. Both are clamped at 0.
+//
+// Single-channel and 3-channel 8-bit input both work; anything else OpenCV
+// rejects comes back as an empty Image, as does an empty src.
+IMAGEUTILS_API Image bilateralFilter(const Image& src, int diameter = -1,
+                                     double sigmaColor = 75.0,
+                                     double sigmaSpace = 75.0);
 // Inclusive HSV bounds, in OpenCV's 8-bit convention: H is 0-179, S and V are
 // 0-255. See the note on hue halving if you're translating from a 0-360 H
 // or a color picker's 0-100% S/V.

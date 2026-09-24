@@ -151,6 +151,24 @@ int main() {
     CHECK(!imageutils::blur(small, 4).empty());
     CHECK(!imageutils::blur(small, 0).empty());
 
+    // Case 8b: bilateralFilter preserves geometry and channel count on both
+    // the 1-channel and the 3-channel input it supports.
+    const imageutils::Image smoothed = imageutils::bilateralFilter(small, 5, 50.0, 50.0);
+    CHECK(smoothed.width() == small.width());
+    CHECK(smoothed.height() == small.height());
+    CHECK(smoothed.channels() == small.channels());
+    const imageutils::Image smoothedColor = imageutils::bilateralFilter(pattern, 5, 50.0, 50.0);
+    CHECK(smoothedColor.width() == pattern.width());
+    CHECK(smoothedColor.channels() == 3);
+
+    // A non-positive diameter is the "derive it from sigmaSpace" spelling, not
+    // an error, and the defaults are that plus OpenCV's usual sigmas.
+    CHECK(!imageutils::bilateralFilter(small, 0, 50.0, 50.0).empty());
+    CHECK(!imageutils::bilateralFilter(small, -3, 50.0, 50.0).empty());
+    CHECK(!imageutils::bilateralFilter(small).empty());
+    // Negative sigmas fold onto 0 rather than producing something undefined.
+    CHECK(!imageutils::bilateralFilter(small, 5, -10.0, -10.0).empty());
+
     // Playing a path that is not an existing file fails before any window is
     // created, so this is safe under a headless runner just like show() above.
     CHECK(!imageutils::playVideo("this_video_does_not_exist_12345.mp4"));
@@ -189,6 +207,7 @@ int main() {
     CHECK(imageutils::adjustHsv(none, 90).empty());
     CHECK(imageutils::resize(none, 8, 8).empty());
     CHECK(imageutils::blur(none, 3).empty());
+    CHECK(imageutils::bilateralFilter(none, 5, 50.0, 50.0).empty());
 
     if (g_failures == 0) {
         std::cout << "imageutils_test: all checks passed\n";
