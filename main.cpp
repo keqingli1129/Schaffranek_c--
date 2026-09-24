@@ -278,135 +278,140 @@ int main(int argc, char** argv) {
     }
     std::cout << "source     = " << sourcePath << " (" << source.width() << 'x'
               << source.height() << ")\n";
+    // source.show("Source");
+    source.showHsv("Source HSV");
+    // imageutils::Image hsv = imageutils::toHsv(source);
+    // hsv.show("HSV");
+    imageutils::Image hsv = imageutils::adjustHsv(source, 0, 1.0, 1.0);
+    hsv.show("Adjusted HSV");
+    // // The three arguments, plus the window title that names them.
+    // struct Sample {
+    //     const char* title;
+    //     int hueShiftDegrees;
+    //     double saturationScale;
+    //     double valueScale;
+    // };
+    // const std::vector<Sample> samples{
+    //     {"1 - Untouched (0, 1.0, 1.0)",         0, 1.0, 1.0},
+    //     {"2 - Hue +60",                        60, 1.0, 1.0},
+    //     {"3 - Hue +120, saturation x1.5",     120, 1.5, 1.0},
+    //     {"4 - Hue -240 (same wheel spot)",   -240, 1.5, 1.0},
+    //     {"5 - Hue +180, opposite colours",    180, 1.0, 1.0},
+    //     {"6 - Desaturated (saturation x0)",     0, 0.0, 1.0},
+    //     {"7 - Dimmed (value x0.5)",             0, 1.0, 0.5},
+    //     {"8 - Brightened (value x1.8)",         0, 1.0, 1.8},
+    // };
 
-    // The three arguments, plus the window title that names them.
-    struct Sample {
-        const char* title;
-        int hueShiftDegrees;
-        double saturationScale;
-        double valueScale;
-    };
-    const std::vector<Sample> samples{
-        {"1 - Untouched (0, 1.0, 1.0)",         0, 1.0, 1.0},
-        {"2 - Hue +60",                        60, 1.0, 1.0},
-        {"3 - Hue +120, saturation x1.5",     120, 1.5, 1.0},
-        {"4 - Hue -240 (same wheel spot)",   -240, 1.5, 1.0},
-        {"5 - Hue +180, opposite colours",    180, 1.0, 1.0},
-        {"6 - Desaturated (saturation x0)",     0, 0.0, 1.0},
-        {"7 - Dimmed (value x0.5)",             0, 1.0, 0.5},
-        {"8 - Brightened (value x1.8)",         0, 1.0, 1.8},
-    };
+    // // The colour-detection trio, on a still instead of a camera feed: the
+    // // original, its HSV decomposition, and the mask each range selects.
+    // //
+    // // colorMask() converts to HSV internally and thresholds *that*, which is
+    // // the point of the exercise -- thresholding the BGR image instead would
+    // // read these same numbers as blue/green/red bounds and select the wrong
+    // // pixels, or none at all.
+    // //
+    // // Bounds are OpenCV's 8-bit HSV: H is 0-179 (real degrees halved to fit a
+    // // byte), S and V are 0-255. So lowH 15 / highH 25 is about 30-50 degrees on
+    // // a colour wheel -- orange -- and the S/V floors keep it to pixels that are
+    // // vividly orange rather than washed out or nearly black.
+    // struct MaskSample {
+    //     const char* title;
+    //     imageutils::HsvRange range;  // lowH, lowS, lowV, highH, highS, highV
+    // };
+    // const std::vector<MaskSample> maskSamples{
+    //     {"11 - Mask: orange (H 15-25)",  {15, 200,  90,  25, 255, 155}},
+    //     {"12 - Mask: blue (H 100-130)",  {100, 120,  60, 130, 255, 255}},
+    //     {"13 - Mask: anything bright",   {0,    0, 200, 179, 255, 255}},
+    // };
 
-    // The colour-detection trio, on a still instead of a camera feed: the
-    // original, its HSV decomposition, and the mask each range selects.
-    //
-    // colorMask() converts to HSV internally and thresholds *that*, which is
-    // the point of the exercise -- thresholding the BGR image instead would
-    // read these same numbers as blue/green/red bounds and select the wrong
-    // pixels, or none at all.
-    //
-    // Bounds are OpenCV's 8-bit HSV: H is 0-179 (real degrees halved to fit a
-    // byte), S and V are 0-255. So lowH 15 / highH 25 is about 30-50 degrees on
-    // a colour wheel -- orange -- and the S/V floors keep it to pixels that are
-    // vividly orange rather than washed out or nearly black.
-    struct MaskSample {
-        const char* title;
-        imageutils::HsvRange range;  // lowH, lowS, lowV, highH, highS, highV
-    };
-    const std::vector<MaskSample> maskSamples{
-        {"11 - Mask: orange (H 15-25)",  {15, 200,  90,  25, 255, 155}},
-        {"12 - Mask: blue (H 100-130)",  {100, 120,  60, 130, 255, 255}},
-        {"13 - Mask: anything bright",   {0,    0, 200, 179, 255, 255}},
-    };
+    // std::cout << "showing    = " << samples.size() + 3 + maskSamples.size()
+    //           << " windows, any key for the next" << std::endl;
+    // for (const Sample& sample : samples) {
+    //     const imageutils::Image adjusted = imageutils::adjustHsv(
+    //         source, sample.hueShiftDegrees, sample.saturationScale, sample.valueScale);
+    //     if (adjusted.empty()) {
+    //         std::cout << "  " << sample.title << " -- adjustHsv failed\n";
+    //         return 1;
+    //     }
+    //     std::cout << "  " << sample.title << std::endl;
+    //     // A headless session is an ordinary outcome here, reported in-band, so
+    //     // say it once and stop rather than opening windows that cannot appear.
+    //     if (!adjusted.show(sample.title)) {
+    //         std::cout << "showing    = no display available\n";
+    //         return 1;
+    //     }
+    // }
 
-    std::cout << "showing    = " << samples.size() + 3 + maskSamples.size()
-              << " windows, any key for the next" << std::endl;
-    for (const Sample& sample : samples) {
-        const imageutils::Image adjusted = imageutils::adjustHsv(
-            source, sample.hueShiftDegrees, sample.saturationScale, sample.valueScale);
-        if (adjusted.empty()) {
-            std::cout << "  " << sample.title << " -- adjustHsv failed\n";
-            return 1;
-        }
-        std::cout << "  " << sample.title << std::endl;
-        // A headless session is an ordinary outcome here, reported in-band, so
-        // say it once and stop rather than opening windows that cannot appear.
-        if (!adjusted.show(sample.title)) {
-            std::cout << "showing    = no display available\n";
-            return 1;
-        }
-    }
+    // // Last one out: a grayscale source has no hue to rotate, so the 200 degrees
+    // // does nothing and only the value scale is visible.
+    // const imageutils::Image grayLifted =
+    //     imageutils::adjustHsv(imageutils::toGrayscale(source), 200, 1.0, 1.3);
+    // std::cout << "  9 - Grayscale source, value x1.3" << std::endl;
+    // grayLifted.show("9 - Grayscale source, value x1.3");
 
-    // Last one out: a grayscale source has no hue to rotate, so the 200 degrees
-    // does nothing and only the value scale is visible.
-    const imageutils::Image grayLifted =
-        imageutils::adjustHsv(imageutils::toGrayscale(source), 200, 1.0, 1.3);
-    std::cout << "  9 - Grayscale source, value x1.3" << std::endl;
-    grayLifted.show("9 - Grayscale source, value x1.3");
+    // std::cout << "  10 - HSV decomposition" << std::endl;
+    // if (!source.showHsv("10 - HSV decomposition")) {
+    //     std::cout << "showing    = no display available\n";
+    //     return 1;
+    // }
 
-    std::cout << "  10 - HSV decomposition" << std::endl;
-    if (!source.showHsv("10 - HSV decomposition")) {
-        std::cout << "showing    = no display available\n";
-        return 1;
-    }
+    // for (const MaskSample& sample : maskSamples) {
+    //     // Single-channel output: white where the pixel fell inside the box,
+    //     // black everywhere else. An empty result is the in-band failure, same
+    //     // as everywhere else in imageutils.
+    //     const imageutils::Image mask = imageutils::colorMask(source, sample.range);
+    //     if (mask.empty()) {
+    //         std::cout << "  " << sample.title << " -- colorMask failed\n";
+    //         return 1;
+    //     }
+    //     std::cout << "  " << sample.title << " (" << mask.channels() << " channel)"
+    //               << std::endl;
+    //     if (!mask.show(sample.title)) {
+    //         std::cout << "showing    = no display available\n";
+    //         return 1;
+    //     }
+    // }
 
-    for (const MaskSample& sample : maskSamples) {
-        // Single-channel output: white where the pixel fell inside the box,
-        // black everywhere else. An empty result is the in-band failure, same
-        // as everywhere else in imageutils.
-        const imageutils::Image mask = imageutils::colorMask(source, sample.range);
-        if (mask.empty()) {
-            std::cout << "  " << sample.title << " -- colorMask failed\n";
-            return 1;
-        }
-        std::cout << "  " << sample.title << " (" << mask.channels() << " channel)"
-                  << std::endl;
-        if (!mask.show(sample.title)) {
-            std::cout << "showing    = no display available\n";
-            return 1;
-        }
-    }
+    // // Markers, drawn last because drawCircle() works in place: `source` is not
+    // // the same picture after this. Image is move-only, so there is no copy to
+    // // scribble on instead -- code that needs the original back reloads it.
+    // const int centerX = source.width() / 2;
+    // const int centerY = source.height() / 2;
 
-    // Markers, drawn last because drawCircle() works in place: `source` is not
-    // the same picture after this. Image is move-only, so there is no copy to
-    // scribble on instead -- code that needs the original back reloads it.
-    const int centerX = source.width() / 2;
-    const int centerY = source.height() / 2;
+    // // The tutorial line, in this API: cv::circle(frame, cv::Point(300, 300), 5,
+    // // cv::Scalar(0), cv::FILLED). Color{} is black and kFilled is the default
+    // // thickness, so the defaults alone reproduce it -- including the part where
+    // // a black 5-pixel dot on a dark screenshot is nearly impossible to find.
+    // if (!source.drawCircle(300, 300, 5)) {
+    //     std::cout << "draw       = drawCircle failed\n";
+    //     return 1;
+    // }
 
-    // The tutorial line, in this API: cv::circle(frame, cv::Point(300, 300), 5,
-    // cv::Scalar(0), cv::FILLED). Color{} is black and kFilled is the default
-    // thickness, so the defaults alone reproduce it -- including the part where
-    // a black 5-pixel dot on a dark screenshot is nearly impossible to find.
-    if (!source.drawCircle(300, 300, 5)) {
-        std::cout << "draw       = drawCircle failed\n";
-        return 1;
-    }
+    // // Colours are BGR, so red is the third component, not the first.
+    // source.drawCircle(centerX, centerY, 20, imageutils::Color{0, 0, 255});
 
-    // Colours are BGR, so red is the third component, not the first.
-    source.drawCircle(centerX, centerY, 20, imageutils::Color{0, 0, 255});
+    // // Same centre, wider, and a positive thickness: a 3-pixel green ring
+    // // instead of a solid disc.
+    // source.drawCircle(centerX, centerY, 60, imageutils::Color{0, 255, 0}, 3);
 
-    // Same centre, wider, and a positive thickness: a 3-pixel green ring
-    // instead of a solid disc.
-    source.drawCircle(centerX, centerY, 60, imageutils::Color{0, 255, 0}, 3);
+    // // Hanging off the right edge on purpose. Clipped to what fits, and still
+    // // true -- being partly off-image is not an error.
+    // const bool clipped = source.drawCircle(source.width() + 40, centerY, 80,
+    //                                        imageutils::Color{255, 255, 0}, 4);
+    // std::cout << "draw       = off-image circle returned "
+    //           << (clipped ? "true (clipped)" : "false") << '\n';
 
-    // Hanging off the right edge on purpose. Clipped to what fits, and still
-    // true -- being partly off-image is not an error.
-    const bool clipped = source.drawCircle(source.width() + 40, centerY, 80,
-                                           imageutils::Color{255, 255, 0}, 4);
-    std::cout << "draw       = off-image circle returned "
-              << (clipped ? "true (clipped)" : "false") << '\n';
+    // // A negative radius is the argument that is genuinely wrong, and it is
+    // // reported in-band like everything else rather than throwing.
+    // std::cout << "draw       = negative radius returned "
+    //           << (source.drawCircle(centerX, centerY, -1) ? "true" : "false, as expected")
+    //           << '\n';
 
-    // A negative radius is the argument that is genuinely wrong, and it is
-    // reported in-band like everything else rather than throwing.
-    std::cout << "draw       = negative radius returned "
-              << (source.drawCircle(centerX, centerY, -1) ? "true" : "false, as expected")
-              << '\n';
-
-    std::cout << "  14 - Markers drawn in place" << std::endl;
-    if (!source.show("14 - Markers drawn in place")) {
-        std::cout << "showing    = no display available\n";
-        return 1;
-    }
+    // std::cout << "  14 - Markers drawn in place" << std::endl;
+    // if (!source.show("14 - Markers drawn in place")) {
+    //     std::cout << "showing    = no display available\n";
+    //     return 1;
+    // }
 
     std::cout << "showing    = done\n";
     return 0;
