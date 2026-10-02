@@ -28,6 +28,25 @@ struct Color {
 // negative thickness means the same thing; this is the readable spelling.
 inline constexpr int kFilled = -1;
 
+// How load() decodes a file -- the second argument to cv::imread, with the
+// three flags that matter in practice given names instead of 0 / 1 / -1.
+//
+//   Grayscale  (0)  one channel, colour collapsed to luminance.
+//   Color      (1)  three channels, BGR order. Any alpha is dropped. Default.
+//   Unchanged (-1)  exactly what the file holds, alpha included -- so a PNG
+//                   with transparency comes back with 4 channels (BGRA).
+//
+// The transforms below accept 4-channel 8-bit input. adjustHsv(),
+// bilateralFilter(), resize() and blur() keep the alpha; toGrayscale() and
+// toHsv() drop it, since neither result has a slot for it; colorMask() uses it
+// to exclude fully transparent pixels. Unchanged also keeps a 16-bit file
+// 16-bit, which not all of them accept -- those fail in-band (an empty result).
+enum class LoadMode {
+    Grayscale,
+    Color,
+    Unchanged,
+};
+
 // Owns a decoded image. Move-only: copying is deliberately disabled so that an
 // accidental pass-by-value never silently deep-copies pixel data.
 //
@@ -42,9 +61,9 @@ public:
     Image(const Image&) = delete;
     Image& operator=(const Image&) = delete;
 
-    // Decodes an image file, always as 3-channel BGR. Returns false and leaves
-    // the object empty on failure.
-    bool load(const std::string& path);
+    // Decodes an image file as `mode` describes; by default 3-channel BGR.
+    // Returns false and leaves the object empty on failure.
+    bool load(const std::string& path, LoadMode mode = LoadMode::Color);
 
     // Encodes to a file; the format is chosen from the extension. Returns false
     // on failure, including when the image is empty.
@@ -88,11 +107,15 @@ public:
     // Shows this image in a window and blocks until the viewer dismisses it --
     // any key, or the window's close button. Nothing is modified, hence const.
     //
+    // delayMs is cv::waitKey's argument: 0 waits indefinitely, a positive value
+    // closes the window by itself after that many milliseconds (a key or the
+    // close button still ends it sooner). Negative is treated as 0.
+    //
     // Returns false when the image is empty, and when there is no display to
     // draw into (a headless session, or an OpenCV built without GUI support).
     // Both are ordinary outcomes, reported in-band like every other failure in
     // this header, so callers check the bool rather than catching.
-    bool show(const std::string& windowTitle = "Image") const;
+    bool show(const std::string& windowTitle = "Image", int delayMs = 0) const;
 
     // Converts to HSV and shows the result in a window, blocking exactly like
     // show(). What appears on screen is the HSV data drawn as if it were BGR --
@@ -144,6 +167,8 @@ IMAGEUTILS_API Image toGrayscale(const Image& src);
 // 3-channel HSV copy of src, with the OpenCV 8-bit ranges: H in [0, 180),
 // S and V in [0, 255]. Single-channel input is treated as grayscale BGR first,
 // so it converts to a zero-hue, zero-saturation image rather than failing.
+// 4-channel (BGRA) input converts too, but its alpha is dropped: there is no
+// fourth channel in an HSV image to carry it.
 IMAGEUTILS_API Image toHsv(const Image& src);
 
 // HSV-space edit, returned as an ordinary 3-channel BGR image -- unlike
@@ -154,6 +179,8 @@ IMAGEUTILS_API Image toHsv(const Image& src);
 // saturationScale and valueScale multiply those channels and are clamped at 0;
 // values above 1 saturate at 255 rather than wrapping. Passing 0, 1.0, 1.0
 // gives a copy of src. Single-channel input is treated as grayscale BGR first.
+// 4-channel (BGRA) input comes back 4-channel: only the colour is edited and
+// the alpha is carried across unchanged.
 //
 // Empty Image if src is empty.
 IMAGEUTILS_API Image adjustHsv(const Image& src, int hueShiftDegrees,
@@ -181,8 +208,10 @@ IMAGEUTILS_API Image blur(const Image& src, int kernelSize);
 // degenerates into an ordinary blur. sigmaSpace is the same idea in pixels, and
 // is what sets the neighbourhood when diameter <= 0. Both are clamped at 0.
 //
-// Single-channel and 3-channel 8-bit input both work; anything else OpenCV
-// rejects comes back as an empty Image, as does an empty src.
+// Single-, 3- and 4-channel 8-bit input all work; with 4 channels the colour
+// is smoothed and the alpha is kept as it was, so transparency edges stay
+// sharp. Anything else OpenCV rejects comes back as an empty Image, as does an
+// empty src.
 IMAGEUTILS_API Image bilateralFilter(const Image& src, int diameter = -1,
                                      double sigmaColor = 75.0,
                                      double sigmaSpace = 75.0);
@@ -194,6 +223,9 @@ struct HsvRange {
     int highH = 179, highS = 255, highV = 255;
 };
 
+// Single-channel 0/255 mask: white where src's HSV value falls inside range.
+// With 4-channel (BGRA) input, fully transparent pixels are never a match --
+// their hidden colour is whatever the editor left behind, not what is seen.
 IMAGEUTILS_API Image colorMask(const Image& src, const HsvRange& range);
 
 // Runtime OpenCV version string, e.g. "4.6.0".

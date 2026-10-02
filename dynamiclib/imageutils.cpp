@@ -1,8 +1,10 @@
 #include "imageutils.h"
 
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <utility>
+#include <vector>
 
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
@@ -43,7 +45,47 @@ Image::~Image() = default;
 Image::Image(Image&&) noexcept = default;
 Image& Image::operator=(Image&&) noexcept = default;
 
-bool Image::load(const std::string& path) {
+namespace {
+
+// LoadMode exists so the header never names OpenCV; this is where it is
+// translated back into the imread flag it stands for.
+int toImreadFlag(LoadMode mode) {
+    switch (mode) {
+    case LoadMode::Grayscale: return cv::IMREAD_GRAYSCALE;  // 0
+    case LoadMode::Unchanged: return cv::IMREAD_UNCHANGED;  // -1
+    case LoadMode::Color:     break;
+    }
+    return cv::IMREAD_COLOR;  // 1, also the answer for an out-of-range cast
+}
+
+// A BGRA image (LoadMode::Unchanged on a PNG with transparency) split into the
+// colour every transform below knows how to handle and the alpha plane they
+// do not. `alpha` stays empty for 1- and 3-channel input, and `bgr` is then
+// the input itself, borrowed rather than copied.
+void splitAlpha(const cv::Mat& input, cv::Mat& bgr, cv::Mat& alpha) {
+    if (input.channels() == 4) {
+        cv::cvtColor(input, bgr, cv::COLOR_BGRA2BGR);
+        cv::extractChannel(input, alpha, 3);
+    } else {
+        bgr = input;
+        alpha.release();
+    }
+}
+
+// The other half of splitAlpha(): puts the alpha plane back on a 3-channel
+// result so the transparency survives the edit. A no-op when there was none.
+cv::Mat restoreAlpha(cv::Mat bgr, const cv::Mat& alpha) {
+    if (alpha.empty()) {
+        return bgr;
+    }
+    cv::Mat bgra;
+    cv::merge(std::vector<cv::Mat>{bgr, alpha}, bgra);
+    return bgra;
+}
+
+}  // namespace
+
+bool Image::load(const std::string& path, LoadMode mode) {
     if (!impl_) {
         impl_ = std::make_unique<Impl>();
     }
@@ -62,7 +104,7 @@ bool Image::load(const std::string& path) {
         return false;
     }
     try {
-        cv::Mat loaded = cv::imread(path, cv::IMREAD_COLOR);
+        cv::Mat loaded = cv::imread(path, toImreadFlag(mode));
         if (loaded.empty()) {
             impl_->mat.release();
             return false;
@@ -98,7 +140,11 @@ bool Image::drawCircle(int centerX, int centerY, int radius, const Color& color,
         // that counts there.
         const cv::Scalar bgr(std::clamp(color.blue, 0, 255),
                              std::clamp(color.green, 0, 255),
-                             std::clamp(color.red, 0, 255));
+                             std::clamp(color.red, 0, 255),
+                             // Fourth component: alpha on a BGRA image, ignored
+                             // otherwise. Left at Scalar's default of 0, every
+                             // circle on a transparent PNG would be invisible.
+                             255);
         // Anything below kFilled would be rejected by OpenCV; fold it onto the
         // sentinel rather than failing, since "more negative" means nothing.
         const int stroke = thickness < kFilled ? kFilled : thickness;
@@ -160,11 +206,12 @@ bool Image::showCameraPreview(int cameraIndex, const std::string& windowTitle) c
     }
 }
 
-bool Image::show(const std::string& windowTitle) const {
+bool Image::show(const std::string& windowTitle, int delayMs) const {
     // Long enough to pump the GUI event loop without spinning the CPU, short
     // enough that the close button still feels immediate. A single blocking
     // waitKey(0) would not do: it never returns when the window is closed with
-    // the mouse instead of the keyboard.
+    // the mouse instead of the keyboard. For the same reason a timed show is
+    // still polled in slices rather than handed to one waitKey(delayMs).
     constexpr int kPollMs = 30;
 
     if (empty()) {
@@ -175,9 +222,21 @@ bool Image::show(const std::string& windowTitle) const {
         cv::namedWindow(windowTitle, cv::WINDOW_AUTOSIZE);
         cv::imshow(windowTitle, impl_->mat);
 
+        const auto deadline =
+            std::chrono::steady_clock::now() + std::chrono::milliseconds(delayMs);
         while (true) {
+            // waitKey's own convention: 0 (or less) means no deadline at all.
+            int wait = kPollMs;
+            if (delayMs > 0) {
+                const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                      deadline - std::chrono::steady_clock::now()).count();
+                if (left <= 0) {
+                    break;
+                }
+                wait = static_cast<int>(std::min<long long>(kPollMs, left));
+            }
             // >= 0 is any key; -1 is the poll timing out with nothing pressed.
-            if (cv::waitKey(kPollMs) >= 0) {
+            if (cv::waitKey(wait) >= 0) {
                 break;
             }
             if (cv::getWindowProperty(windowTitle, cv::WND_PROP_VISIBLE) < 1) {
@@ -381,11 +440,15 @@ Image adjustHsv(const Image& src, int hueShiftDegrees, double saturationScale,
     }
     try {
         const cv::Mat& input = detail::Access::mat(src);
+        // Alpha is set aside rather than run through HSV, which has no slot
+        // for it, and reattached at the end -- a hue shift is not a reason to
+        // lose the transparency.
         cv::Mat bgr;
+        cv::Mat alpha;
         if (input.channels() == 1) {
             cv::cvtColor(input, bgr, cv::COLOR_GRAY2BGR);
         } else {
-            bgr = input;
+            splitAlpha(input, bgr, alpha);
         }
 
         cv::Mat hsv;
@@ -412,7 +475,7 @@ Image adjustHsv(const Image& src, int hueShiftDegrees, double saturationScale,
 
         cv::Mat output;
         cv::cvtColor(hsv, output, cv::COLOR_HSV2BGR);
-        return detail::Access::wrap(std::move(output));
+        return detail::Access::wrap(restoreAlpha(std::move(output), alpha));
     } catch (const cv::Exception&) {
         return Image{};
     }
@@ -468,11 +531,18 @@ Image bilateralFilter(const Image& src, int diameter, double sigmaColor,
 
         // bilateralFilter refuses to work in place, so this must be a distinct
         // Mat -- it cannot be the borrowed input aliased.
+        //
+        // The filter itself only takes 1 or 3 channels, so a BGRA source is
+        // smoothed on its colour alone and gets its alpha back untouched --
+        // smoothing a transparency edge would make it a soft halo.
+        cv::Mat bgr;
+        cv::Mat alpha;
+        splitAlpha(detail::Access::mat(src), bgr, alpha);
         cv::Mat output;
-        cv::bilateralFilter(detail::Access::mat(src), output, d, colorSigma, spaceSigma);
-        return detail::Access::wrap(std::move(output));
+        cv::bilateralFilter(bgr, output, d, colorSigma, spaceSigma);
+        return detail::Access::wrap(restoreAlpha(std::move(output), alpha));
     } catch (const cv::Exception&) {
-        // 8-bit 1- and 3-channel input is all this filter supports; anything
+        // 8-bit 1-, 3- and 4-channel input is all this supports; anything
         // else lands here, in-band with every other failure in this file.
         return Image{};
     }
@@ -483,14 +553,24 @@ Image colorMask(const Image& src, const HsvRange& range) {
         return Image{};
     }
     try {
+        cv::Mat bgr;
+        cv::Mat alpha;
+        splitAlpha(detail::Access::mat(src), bgr, alpha);
+
         cv::Mat hsv;
-        cv::cvtColor(detail::Access::mat(src), hsv, cv::COLOR_BGR2HSV);
+        cv::cvtColor(bgr, hsv, cv::COLOR_BGR2HSV);
 
         cv::Mat mask;
         cv::inRange(hsv,
                     cv::Scalar(range.lowH, range.lowS, range.lowV),
                     cv::Scalar(range.highH, range.highS, range.highV),
                     mask);
+        // A fully transparent pixel still carries a colour, usually whatever
+        // the editor left there, but nobody can see it -- so it is never a
+        // match, however well that hidden colour fits the range.
+        if (!alpha.empty()) {
+            mask.setTo(0, alpha == 0);
+        }
         return detail::Access::wrap(std::move(mask));
     } catch (const cv::Exception&) {
         return Image{};

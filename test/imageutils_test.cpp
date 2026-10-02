@@ -84,6 +84,16 @@ int main() {
     CHECK(reloaded.width() == pattern.width());
     CHECK(reloaded.height() == pattern.height());
     CHECK(reloaded.channels() == 3);
+
+    // Case 9b: the imread flag is honoured. Grayscale collapses to one channel;
+    // Unchanged keeps what the file holds, and this PNG holds plain BGR.
+    imageutils::Image grayLoaded;
+    CHECK(grayLoaded.load(roundTripPath, imageutils::LoadMode::Grayscale));
+    CHECK(grayLoaded.channels() == 1);
+    CHECK(grayLoaded.width() == pattern.width());
+    imageutils::Image asIs;
+    CHECK(asIs.load(roundTripPath, imageutils::LoadMode::Unchanged));
+    CHECK(asIs.channels() == 3);
     std::remove(roundTripPath.c_str());
 
     // Case 3: grayscale collapses to one channel, geometry unchanged.
@@ -208,6 +218,22 @@ int main() {
     CHECK(imageutils::resize(none, 8, 8).empty());
     CHECK(imageutils::blur(none, 3).empty());
     CHECK(imageutils::bilateralFilter(none, 5, 50.0, 50.0).empty());
+
+    // Case 15: 4-channel (BGRA) input. The source tree's screenshot carries an
+    // alpha channel, which is what LoadMode::Unchanged is for.
+    imageutils::Image bgra;
+    CHECK(bgra.load(IMAGEUTILS_TEST_BGRA_PATH, imageutils::LoadMode::Unchanged));
+    CHECK(bgra.channels() == 4);
+    // Edits keep the alpha...
+    CHECK(imageutils::adjustHsv(bgra, 90).channels() == 4);
+    CHECK(imageutils::bilateralFilter(bgra, 5).channels() == 4);
+    // ...conversions that have no slot for it drop it, rather than failing.
+    CHECK(imageutils::toHsv(bgra).channels() == 3);
+    CHECK(imageutils::toGrayscale(bgra).channels() == 1);
+    CHECK(imageutils::colorMask(bgra, imageutils::HsvRange{}).channels() == 1);
+    // Drawing on it still works and stays 4-channel.
+    CHECK(bgra.drawCircle(10, 10, 5, imageutils::Color{0, 0, 255}));
+    CHECK(bgra.channels() == 4);
 
     if (g_failures == 0) {
         std::cout << "imageutils_test: all checks passed\n";

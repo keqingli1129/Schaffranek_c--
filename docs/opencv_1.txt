@@ -1,0 +1,67 @@
+hey there welcome to learn open CV in
+this video we will learn about reading
+displaying and writing an image using
+open CV open CV provides separate
+functions for all the three operations
+let's have a look at them to read the
+image we have the function IM am read
+its first argument is a relative or
+absolute part to the image and the
+second argument is an optional flag
+which specifies how the image should be
+representated zero is for gray scale and
+one or minus one is for colored images
+minus one however also reads the alpha
+channel in the image while one is a
+default flag these three are the most
+commonly used Flags but open CV also
+includes more here's a list of them it
+should also be noted that open CV reads
+the image in BGR format to display an
+image we have the function I am show its
+first argument is is the window name on
+which the image will be displayed and
+the second argument is the
+image with IM am show you'll also need
+to use the function weit key which
+specifies for how long the image will be
+displayed it inputs one argument which
+is time given in
+milliseconds however if this is zero the
+image will be displayed in definitely to
+write the image to disk we have the
+function I am WR it's first argument is
+the file name with the extension and the
+second argument is the image that needs
+to be saved on the
+disk now let's try these functions out
+on code to follow along with me open the
+learn open CV blog post link from the
+description click on the download code
+Banner fill in your details and hit
+enter you'll receive the start a code
+link on your email download it and let's
+get started we first need to import open
+open CV and
+numpy and read this image now use CV2
+MRE provide the image path and the flag
+and save this to image good now to
+display the image use CV2 IMO and pass
+the window name and the
+image but before we run this code make
+sure you have weit key zero then run
+this code and here is the input image we
+will change this image to gray scale and
+again run the
+code check out open CV University's
+official opencv boot camp to learn about
+these and more advanced concepts go to
+open cv. rg/
+university/ free courses to no more next
+we will write the grayscale image to
+disk commend the mow lines and use CV2
+imite and pass the output file name and
+the
+image now run the code there you have it
+so that's all about reading displaying
+and writing an image using open CV

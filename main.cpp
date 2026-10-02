@@ -267,108 +267,156 @@ int main(int argc, char** argv) {
 
     // return saved ? 0 : 1;
 
-    // Every adjustHsv knob, one window each. show() blocks until a key is
-    // pressed, so the windows arrive one at a time in the order listed below.
+    // Reading, displaying and writing an image -- the LearnOpenCV tutorial in
+    // docs/opencv_1.txt, which uses Python's cv2.imread / imshow / waitKey /
+    // imwrite. Each step below names the call it stands in for.
     const std::filesystem::path project = projectDir();
-    const std::string sourcePath = (project / "Screenshot.png").string();
+    const std::string inputPath = (project / "Screenshot.png").string();
 
-    imageutils::Image source;
-    if (!source.load(sourcePath)) {
-        std::cout << "source     = cannot load " << sourcePath << '\n';
+    // img = cv2.imread(path, 1) -- 1 is the default flag: 3-channel BGR.
+    imageutils::Image color;
+    if (!color.load(inputPath, imageutils::LoadMode::Color)) {
+        std::cout << "read       = cannot load " << inputPath << '\n';
         return 1;
     }
-    std::cout << "source     = " << sourcePath << " (" << source.width() << 'x'
-              << source.height() << ")\n";
-    // source.show("Source");
-    source.showHsv("Source HSV");
-    // imageutils::Image hsv = imageutils::toHsv(source);
-    // hsv.show("HSV");
-    imageutils::Image hsv = imageutils::adjustHsv(source, 0, 1.0, 1.0);
-    hsv.show("Adjusted HSV");
+    std::cout << "color      = " << color.width() << 'x' << color.height() << ", "
+              << color.channels() << " channels\n";
 
-    // bilateralFilter, against blur() for contrast. Both windows below smooth
-    // by about the same amount; the difference to look for is what happens to
-    // the edges -- blur() takes them with it, bilateralFilter() leaves them
-    // standing while the flat areas go smooth. That is the whole reason to pay
-    // for it, and it is only visible on a photograph, not a synthetic pattern.
-    //
-    // Each one is timed because the cost is the other half of the trade: the
-    // neighbourhood is scanned per pixel with no separable shortcut, so this
-    // runs orders of magnitude slower than the Gaussian and grows with the
-    // square of the diameter.
-    {
-        // The arguments, plus the window title that names them. A diameter of
-        // -1 is the "derive it from sigmaSpace" spelling, not a mistake.
-        struct Smooth {
-            const char* title;
-            int diameter;
-            double sigmaColor;
-            double sigmaSpace;
-        };
-        const std::vector<Smooth> smooths{
-            {"B2 - Bilateral d=5, sigma 50/50 (video-rate)",    5,  50.0,  50.0},
-            {"B3 - Bilateral d=9, sigma 75/75 (the default)",   9,  75.0,  75.0},
-            {"B4 - Bilateral d=9, sigmaColor 200 (too high)",   9, 200.0,  75.0},
-            {"B5 - Bilateral d=-1, sigmaSpace 15 sets the size", -1, 75.0, 15.0},
-        };
-
-        const auto timed = [](const char* label, auto&& work) {
-            const auto start = std::chrono::steady_clock::now();
-            imageutils::Image result = work();
-            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                std::chrono::steady_clock::now() - start).count();
-            std::cout << "  " << label << "  [" << ms << " ms]" << std::endl;
-            return result;
-        };
-
-        // The baseline to judge the rest against: same neighbourhood as B3, no
-        // colour term at all, so every edge in the picture softens.
-        const imageutils::Image gaussian =
-            timed("B1 - Gaussian blur, kernel 9 (edges go too)",
-                  [&] { return imageutils::blur(source, 9); });
-        if (gaussian.empty() || !gaussian.show("B1 - Gaussian blur, kernel 9 (edges go too)")) {
-            std::cout << "showing    = blur failed or no display available\n";
-            return 1;
-        }
-
-        for (const Smooth& smooth : smooths) {
-            const imageutils::Image filtered = timed(smooth.title, [&] {
-                return imageutils::bilateralFilter(source, smooth.diameter,
-                                                   smooth.sigmaColor, smooth.sigmaSpace);
-            });
-            // An empty result is the in-band failure, same as everywhere else
-            // in imageutils -- callers test instead of catching.
-            if (filtered.empty()) {
-                std::cout << "  " << smooth.title << " -- bilateralFilter failed\n";
-                return 1;
-            }
-            if (!filtered.show(smooth.title)) {
-                std::cout << "showing    = no display available\n";
-                return 1;
-            }
-        }
-
-        // Single-channel input is supported too, so a mask or a grayscale
-        // conversion can be smoothed without widening it back to BGR first.
-        const imageutils::Image graySmoothed =
-            imageutils::bilateralFilter(imageutils::toGrayscale(source), 9, 75.0, 75.0);
-        std::cout << "  B6 - Grayscale source (" << graySmoothed.channels()
-                  << " channel)" << std::endl;
-        if (!graySmoothed.show("B6 - Grayscale source, bilateral d=9")) {
-            std::cout << "showing    = no display available\n";
-            return 1;
-        }
-
-        // Bad arguments stay in-band as well: an empty source yields an empty
-        // result, and negative sigmas are folded onto 0 rather than rejected.
-        std::cout << "  empty-src  = "
-                  << (imageutils::bilateralFilter(imageutils::Image{}, 9).empty()
-                          ? "empty, as expected" : "unexpected")
-                  << "\n  neg-sigma  = "
-                  << (imageutils::bilateralFilter(source, 5, -10.0, -10.0).empty()
-                          ? "unexpected" : "clamped to 0, still filtered")
-                  << std::endl;
+    // cv2.imread(path, 0) -- the same file decoded straight to grayscale.
+    imageutils::Image gray;
+    if (!gray.load(inputPath, imageutils::LoadMode::Grayscale)) {
+        std::cout << "read       = cannot load " << inputPath << " as grayscale\n";
+        return 1;
     }
+    std::cout << "grayscale  = " << gray.channels() << " channel\n";
+
+    // cv2.imread(path, -1) -- whatever the file holds, alpha included, so a
+    // PNG with transparency reports 4 channels here instead of 3.
+    imageutils::Image unchanged;
+    if (unchanged.load(inputPath, imageutils::LoadMode::Unchanged)) {
+        std::cout << "unchanged  = " << unchanged.channels() << " channels\n";
+    }
+
+    // cv2.imshow(name, img) + cv2.waitKey(0): 0 waits for a key indefinitely.
+    std::cout << "show       = Color (any key to close)" << std::endl;
+    if (!color.show("Color", 0)) {
+        std::cout << "show       = no display available\n";
+        return 1;
+    }
+
+    // cv2.waitKey(3000) instead: the window closes by itself after 3 seconds.
+    std::cout << "show       = Grayscale (closes after 3 s)" << std::endl;
+    gray.show("Grayscale", 3000);
+
+    // cv2.imwrite(file, img) -- the extension picks the format. *.png is
+    // gitignored, so the output sits beside the input without becoming noise.
+    const std::string outputPath = (project / "Screenshot_gray.png").string();
+    const bool written = gray.save(outputPath);
+    std::cout << "write      = " << outputPath << " (" << (written ? "yes" : "no") << ")\n";
+    return written ? 0 : 1;
+
+    // // Every adjustHsv knob, one window each. show() blocks until a key is
+    // // pressed, so the windows arrive one at a time in the order listed below.
+    // const std::filesystem::path project = projectDir();
+    // const std::string sourcePath = (project / "Screenshot.png").string();
+
+    // imageutils::Image source;
+    // if (!source.load(sourcePath)) {
+    //     std::cout << "source     = cannot load " << sourcePath << '\n';
+    //     return 1;
+    // }
+    // std::cout << "source     = " << sourcePath << " (" << source.width() << 'x'
+    //           << source.height() << ")\n";
+    // // source.show("Source");
+    // source.showHsv("Source HSV");
+    // // imageutils::Image hsv = imageutils::toHsv(source);
+    // // hsv.show("HSV");
+    // imageutils::Image hsv = imageutils::adjustHsv(source, 0, 1.0, 1.0);
+    // hsv.show("Adjusted HSV");
+
+    // // bilateralFilter, against blur() for contrast. Both windows below smooth
+    // // by about the same amount; the difference to look for is what happens to
+    // // the edges -- blur() takes them with it, bilateralFilter() leaves them
+    // // standing while the flat areas go smooth. That is the whole reason to pay
+    // // for it, and it is only visible on a photograph, not a synthetic pattern.
+    // //
+    // // Each one is timed because the cost is the other half of the trade: the
+    // // neighbourhood is scanned per pixel with no separable shortcut, so this
+    // // runs orders of magnitude slower than the Gaussian and grows with the
+    // // square of the diameter.
+    // {
+    //     // The arguments, plus the window title that names them. A diameter of
+    //     // -1 is the "derive it from sigmaSpace" spelling, not a mistake.
+    //     struct Smooth {
+    //         const char* title;
+    //         int diameter;
+    //         double sigmaColor;
+    //         double sigmaSpace;
+    //     };
+    //     const std::vector<Smooth> smooths{
+    //         {"B2 - Bilateral d=5, sigma 50/50 (video-rate)",    5,  50.0,  50.0},
+    //         {"B3 - Bilateral d=9, sigma 75/75 (the default)",   9,  75.0,  75.0},
+    //         {"B4 - Bilateral d=9, sigmaColor 200 (too high)",   9, 200.0,  75.0},
+    //         {"B5 - Bilateral d=-1, sigmaSpace 15 sets the size", -1, 75.0, 15.0},
+    //     };
+
+    //     const auto timed = [](const char* label, auto&& work) {
+    //         const auto start = std::chrono::steady_clock::now();
+    //         imageutils::Image result = work();
+    //         const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+    //                             std::chrono::steady_clock::now() - start).count();
+    //         std::cout << "  " << label << "  [" << ms << " ms]" << std::endl;
+    //         return result;
+    //     };
+
+    //     // The baseline to judge the rest against: same neighbourhood as B3, no
+    //     // colour term at all, so every edge in the picture softens.
+    //     const imageutils::Image gaussian =
+    //         timed("B1 - Gaussian blur, kernel 9 (edges go too)",
+    //               [&] { return imageutils::blur(source, 9); });
+    //     if (gaussian.empty() || !gaussian.show("B1 - Gaussian blur, kernel 9 (edges go too)")) {
+    //         std::cout << "showing    = blur failed or no display available\n";
+    //         return 1;
+    //     }
+
+    //     for (const Smooth& smooth : smooths) {
+    //         const imageutils::Image filtered = timed(smooth.title, [&] {
+    //             return imageutils::bilateralFilter(source, smooth.diameter,
+    //                                                smooth.sigmaColor, smooth.sigmaSpace);
+    //         });
+    //         // An empty result is the in-band failure, same as everywhere else
+    //         // in imageutils -- callers test instead of catching.
+    //         if (filtered.empty()) {
+    //             std::cout << "  " << smooth.title << " -- bilateralFilter failed\n";
+    //             return 1;
+    //         }
+    //         if (!filtered.show(smooth.title)) {
+    //             std::cout << "showing    = no display available\n";
+    //             return 1;
+    //         }
+    //     }
+
+    //     // Single-channel input is supported too, so a mask or a grayscale
+    //     // conversion can be smoothed without widening it back to BGR first.
+    //     const imageutils::Image graySmoothed =
+    //         imageutils::bilateralFilter(imageutils::toGrayscale(source), 9, 75.0, 75.0);
+    //     std::cout << "  B6 - Grayscale source (" << graySmoothed.channels()
+    //               << " channel)" << std::endl;
+    //     if (!graySmoothed.show("B6 - Grayscale source, bilateral d=9")) {
+    //         std::cout << "showing    = no display available\n";
+    //         return 1;
+    //     }
+
+    //     // Bad arguments stay in-band as well: an empty source yields an empty
+    //     // result, and negative sigmas are folded onto 0 rather than rejected.
+    //     std::cout << "  empty-src  = "
+    //               << (imageutils::bilateralFilter(imageutils::Image{}, 9).empty()
+    //                       ? "empty, as expected" : "unexpected")
+    //               << "\n  neg-sigma  = "
+    //               << (imageutils::bilateralFilter(source, 5, -10.0, -10.0).empty()
+    //                       ? "unexpected" : "clamped to 0, still filtered")
+    //               << std::endl;
+    // }
     // // The three arguments, plus the window title that names them.
     // struct Sample {
     //     const char* title;
@@ -498,6 +546,6 @@ int main(int argc, char** argv) {
     //     return 1;
     // }
 
-    std::cout << "showing    = done\n";
-    return 0;
+    // std::cout << "showing    = done\n";
+    // return 0;
 }
